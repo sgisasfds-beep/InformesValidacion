@@ -1,14 +1,3 @@
-/**
- * INFORME - GRÁFICAS FINALES Y EXPORTACIÓN A PDF/ZIP
- * -----------------------------------------------------------------------
- * renderizarGraficas (gráficos embebidos del informe), preparación del
- * layout especial para RAS antes de imprimir, exportarPDF/generarPDFBlob
- * y exportarTodosPDFsZip (descarga masiva). Se ejecuta también aquí la
- * inicialización de la app al cargar el DOM.
- * Depende de todos los módulos anteriores.
- * -----------------------------------------------------------------------
- */
-
 let instanciaChartPrecision = null;
 let instanciaChartCurvasInd = null;
 let instanciaChartCurvaPromedio = null;
@@ -570,8 +559,7 @@ function recopilarDatosDelInforme() {
 // 3. Función para enviar y guardar el informe en la base de datos SQL (FastAPI / PostgreSQL)
 async function guardarPersistenciaEnSQL(codigoUnico, parametro, matriz, datosCompletos) {
     try {
-        // CORRECCIÓN: Agregar http://localhost:8000 antes de la API
-        const response = await fetch("http://localhost:8000/api/guardar-reporte", { 
+        const response = await fetch(`${window.API_BASE_URL}/api/guardar-reporte`, { 
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

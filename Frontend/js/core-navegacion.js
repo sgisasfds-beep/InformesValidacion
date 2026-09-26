@@ -127,7 +127,7 @@ window.procesarFormulario = async function (e) {
     }
 
     try {
-        const response = await fetch('http://localhost:8000/api/procesar-datos', {
+        const response = await fetch(`${window.API_BASE_URL}/api/procesar-datos`, {
             method: 'POST',
             body: formData
         });
@@ -190,4 +190,3 @@ window.actualizarTabs = function (prefijo, controlSeleccionado) {
         }
     });
 };
-
