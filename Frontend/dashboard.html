@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Validación de Método</title>
+    <script src="tailwindcss.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-[#F3F6FD] text-slate-600 antialiased selection:bg-blue-100 selection:text-blue-900 h-screen flex overflow-hidden">
+
+    <!-- Sidebar Original Adaptado -->
+    <aside class="w-64 bg-white shadow-[4px_0_24px_rgba(0,0,0,0.02)] flex flex-col justify-between z-10 border-r border-slate-100 flex-shrink-0">
+        <div class="p-6">
+            <div class="flex items-center gap-3 mb-10 mt-2">
+                <div class="w-4 h-4 bg-[#4361EE] rounded-sm"></div>
+                <h1 class="text-xl font-bold text-slate-800 tracking-tight">LIMS SGI</h1>
+            </div>
+            <nav class="space-y-1">
+                <button class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-500 font-medium transition-all flex items-center gap-3">
+                    <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Carga de Datos
+                </button>
+                <button class="w-full text-left px-4 py-3 rounded-xl bg-[#F3F6FD] text-[#4361EE] font-semibold transition-all flex items-center gap-3">
+                    <span class="w-1.5 h-1.5 rounded-full bg-[#4361EE]"></span> Dashboard Informe
+                </button>
+                <!-- Otros botones resumidos por brevedad -->
+                <button class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-500 font-medium transition-all flex items-center gap-3">
+                    <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Límites Det./Cuant.
+                </button>
+                <button class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-500 font-medium transition-all flex items-center gap-3">
+                    <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Precisión y Exactitud
+                </button>
+            </nav>
+        </div>
+        <div class="p-6 border-t border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
+            Fisicoquímica & Metrología
+        </div>
+    </aside>
+
+    <!-- Main Dashboard Content -->
+    <main class="flex-1 overflow-y-auto p-8 relative z-0">
+        <div class="max-w-7xl mx-auto space-y-6">
+            
+            <!-- Header Section -->
+            <header class="flex justify-between items-end bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <div>
+                    <div class="flex items-center gap-3 mb-2">
+                        <span class="px-2.5 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-md tracking-wide uppercase">Dictamen: Conforme</span>
+                        <span class="text-sm font-medium text-slate-400">PO-AM-012</span>
+                    </div>
+                    <h2 class="text-2xl font-bold text-slate-800">Informe de Validación: Estaño (Sn)</h2>
+                    <p class="text-sm text-slate-500 mt-1">Espectrometría de ICP-OES en matrices de Agua</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-xs text-slate-400 font-medium mb-1">Responsable Técnico</p>
+                    <p class="text-sm font-semibold text-slate-700">Daniela Pasachoa</p>
+                </div>
+            </header>
+
+            <!-- KPI Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- KPI 1 -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Límites Analíticos</h3>
+                    <div class="flex justify-between items-end">
+                        <div>
+                            <p class="text-2xl font-bold text-slate-800">0.0051 <span class="text-sm font-medium text-slate-500">mg/L</span></p>
+                            <p class="text-xs text-slate-500 mt-1">LOD Estimado</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xl font-bold text-slate-700">0.017</p>
+                            <p class="text-[10px] text-slate-400">LOQ</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPI 2 -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Error Global (LCM)</h3>
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-lg">
+                            2.7%
+                        </div>
+                        <p class="text-xs text-slate-500 leading-tight">Cumple con el criterio de aceptación permitido (≤ 35%).</p>
+                    </div>
+                </div>
+
+                <!-- KPI 3 -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Linealidad (R²)</h3>
+                    <p class="text-2xl font-bold text-[#3A0CA3]">0.99973</p>
+                    <p class="text-xs text-slate-500 mt-1">Sensibilidad: 154723.26 ± 155</p>
+                </div>
+
+                <!-- KPI 4 -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center border-l-4 border-l-[#F72585]">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Incertidumbre Expandida</h3>
+                    <p class="text-2xl font-bold text-slate-800">± 3.78%</p>
+                    <p class="text-xs text-slate-500 mt-1">U_c = 0.01890</p>
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Linearity Chart -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-sm font-bold text-slate-700">Curva de Calibración Promedio</h3>
+                        <span class="text-xs text-slate-400 font-medium">Rango: 0.05 - 1.0 mg/L</span>
+                    </div>
+                    <div class="relative h-64 w-full">
+                        <canvas id="chartLinealidad"></canvas>
+                    </div>
+                </div>
+
+                <!-- Uncertainty Doughnut -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <h3 class="text-sm font-bold text-slate-700 mb-4">Contribución de Fuentes a la Incertidumbre</h3>
+                    <div class="relative h-64 w-full flex items-center justify-center">
+                        <canvas id="chartIncertidumbre"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recovery Data / Working Range -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-8">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-700">Evaluación del Rango de Trabajo (RT)</h3>
+                        <p class="text-xs text-slate-500 mt-1">Recuperación global en estándar de concentración teórica 1000 mg/L</p>
+                    </div>
+                    <div class="bg-slate-50 px-4 py-2 rounded-lg text-center">
+                        <p class="text-[10px] text-slate-400 font-bold uppercase">Rec. Global</p>
+                        <p class="text-lg font-bold text-slate-800">98.33%</p>
+                    </div>
+                </div>
+                
+                <!-- Simulated Table based on PDF -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="text-xs text-slate-400 uppercase bg-slate-50">
+                            <tr>
+                                <th class="px-4 py-3 rounded-tl-lg">Parámetro</th>
+                                <th class="px-4 py-3">Analista 1</th>
+                                <th class="px-4 py-3">Analista 2</th>
+                                <th class="px-4 py-3 rounded-tr-lg">Consolidado Global</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr>
+                                <td class="px-4 py-3 font-medium text-slate-700">Promedio (mg/L)</td>
+                                <td class="px-4 py-3">979.8501</td>
+                                <td class="px-4 py-3">986.7671</td>
+                                <td class="px-4 py-3 font-semibold">983.3086</td>
+                            </tr>
+                            <tr>
+                                <td class="px-4 py-3 font-medium text-slate-700">Desv. Estándar</td>
+                                <td class="px-4 py-3">47.9964</td>
+                                <td class="px-4 py-3">55.7149</td>
+                                <td class="px-4 py-3 font-semibold">50.7364</td>
+                            </tr>
+                            <tr>
+                                <td class="px-4 py-3 font-medium text-slate-700">% Error Promedio</td>
+                                <td class="px-4 py-3">2.01%</td>
+                                <td class="px-4 py-3">1.32%</td>
+                                <td class="px-4 py-3 font-semibold">1.67%</td>
+                            </tr>
+                            <tr>
+                                <td class="px-4 py-3 font-medium text-slate-700">Test de Grubbs</td>
+                                <td class="px-4 py-3 text-green-600 text-xs font-bold">Sin atípicos</td>
+                                <td class="px-4 py-3 text-green-600 text-xs font-bold">Sin atípicos</td>
+                                <td class="px-4 py-3 text-green-600 text-xs font-bold">-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        // Configuración común
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.defaults.color = '#64748b';
+
+        // 1. Gráfico de Linealidad
+        const ctxLin = document.getElementById('chartLinealidad').getContext('2d');
+        new Chart(ctxLin, {
+            type: 'line',
+            data: {
+                labels: ['0.05', '0.1', '0.4', '0.7', '1.0'],
+                datasets: [{
+                    label: 'Promedio Experimental (Señal)',
+                    data: [18930, 26667, 70802, 119744, 165600],
+                    borderColor: '#4361EE',
+                    backgroundColor: '#4361EE',
+                    borderWidth: 2,
+                    pointRadius: 5,
+                    pointBackgroundColor: '#fff',
+                    pointBorderWidth: 2,
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#1e293b',
+                        padding: 12,
+                        cornerRadius: 8
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { borderDash: [4, 4], color: '#f1f5f9' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        title: { display: true, text: 'Concentración (mg/L)', font: {size: 11} }
+                    }
+                }
+            }
+        });
+
+        // 2. Gráfico de Incertidumbre (Doughnut)
+        const ctxInc = document.getElementById('chartIncertidumbre').getContext('2d');
+        new Chart(ctxInc, {
+            type: 'doughnut',
+            data: {
+                labels: [
+                    'Repetibilidad LCM (58.3%)', 
+                    'Curva Calibración (37.2%)', 
+                    'Prep. Patrón (3.1%)', 
+                    'Patrón CRM (1.1%)', 
+                    'Trat. Muestra (0.3%)'
+                ],
+                datasets: [{
+                    data: [58.3, 37.2, 3.1, 1.1, 0.3],
+                    backgroundColor: [
+                        '#4361EE', // Azul principal
+                        '#3A0CA3', // Indigo oscuro
+                        '#4CC9F0', // Cyan
+                        '#F72585', // Rosa
+                        '#7209B7'  // Púrpura
+                    ],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 20,
+                            font: { size: 11 }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

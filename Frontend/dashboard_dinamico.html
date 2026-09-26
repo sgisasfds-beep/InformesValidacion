@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Dinámico - Validación LIMS</title>
+    <script src="tailwindcss.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        .fade-in { animation: fadeIn 0.5s ease-in-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="text-slate-700 h-screen flex overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-white shadow-lg flex flex-col justify-between z-20 flex-shrink-0">
+        <div class="p-6">
+            <div class="flex items-center gap-3 mb-10 mt-2">
+                <div class="w-8 h-8 bg-gradient-to-br from-indigo-600 to-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                </div>
+                <h1 class="text-xl font-bold text-slate-800 tracking-tight">AI Validator</h1>
+            </div>
+            <nav class="space-y-2">
+                <button class="w-full text-left px-4 py-3 rounded-xl bg-indigo-50 text-indigo-700 font-semibold transition-all flex items-center gap-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    Dashboard Dinámico
+                </button>
+            </nav>
+        </div>
+    </aside>
+
+    <main class="flex-1 relative overflow-y-auto w-full p-8" id="dashboard-container">
+        <!-- El contenido se inyecta dinámicamente aquí para demostrar que soporta cualquier PDF -->
+    </main>
+
+    <script>
+        // ============================================================================
+        // 1. SIMULACIÓN DE EXTRACCIÓN DINÁMICA (MOTOR IA)
+        // Estos objetos simulan lo que la IA lee del PDF sin importar cómo se llamen 
+        // los estándares o las matrices.
+        // ============================================================================
+        
+        const pdf_Estano = {
+            metadata: {
+                parameter: "Estaño (Sn)",
+                procedure: "PO-AM-012",
+                status: "Conforme"
+            },
+            section7_summary: [
+                { id: "rechazo", title: "Tratamiento Datos", val: "Test Grubbs: Sin atípicos", pass: true },
+                { id: "limites", title: "LOD / LOQ", val: "0.0051 / 0.017 mg/L", pass: true },
+                { id: "linealidad", title: "Linealidad", val: "R² = 0.9997 (3 curvas)", pass: true },
+                { id: "precision", title: "Precisión", val: "ANOVA p > 0.05", pass: true },
+                { id: "robustez", title: "Robustez", val: "Test Youden OK", pass: true },
+                { id: "incertidumbre", title: "Incertidumbre", val: "U_exp = ± 3.78%", pass: true }
+            ],
+            working_range: {
+                min: 0.05, max: 1000,
+                unit: "mg/L",
+                global_recovery: 98.33,
+                cv: 5.16
+            },
+            // Nombres de estándares variables leídos dinámicamente
+            standards: [
+                { name: "LCM", recovery: 98.3, error: 2.7 },
+                { name: "CCV", recovery: 101.5, error: 1.5 },
+                { name: "EA (Adición)", recovery: 100.2, error: 2.1 }
+            ],
+            // Matrices variables leídas dinámicamente
+            matrices: [
+                { name: "Agua Superficial", a1: 98.4, a2: 99.1 },
+                { name: "Agua Subterránea", a1: 101.2, a2: 100.5 },
+                { name: "Residual Doméstica", a1: 97.5, a2: 98.2 },
+                { name: "Residual No Dom.", a1: 101.5, a2: 102.1 }
+            ],
+            analysts: ["Analista 1", "Analista 2"]
+        };
+
+        const pdf_Plomo = {
+            metadata: {
+                parameter: "Plomo (Pb) - SIMULACIÓN DINÁMICA",
+                procedure: "PO-SUELOS-099",
+                status: "Conforme"
+            },
+            section7_summary: [
+                { id: "rechazo", title: "Tratamiento Datos", val: "2 Atípicos removidos", pass: true },
+                { id: "limites", title: "LOD / LOQ", val: "0.02 / 0.1 mg/kg", pass: true },
+                { id: "linealidad", title: "Linealidad", val: "R² = 0.9950", pass: true },
+                { id: "precision", title: "Precisión", val: "CV Intermedio 8%", pass: true },
+                { id: "robustez", title: "Robustez", val: "Temperatura varió", pass: false },
+                { id: "incertidumbre", title: "Incertidumbre", val: "U_exp = ± 5.1%", pass: true }
+            ],
+            working_range: {
+                min: 0.1, max: 500,
+                unit: "mg/kg",
+                global_recovery: 95.2,
+                cv: 8.4
+            },
+            // Estándares completamente diferentes
+            standards: [
+                { name: "QC_Low", recovery: 94.1, error: 5.9 },
+                { name: "QC_Med", recovery: 96.5, error: 3.5 },
+                { name: "QC_High", recovery: 98.0, error: 2.0 },
+                { name: "Spike_Matrix", recovery: 92.5, error: 7.5 }
+            ],
+            // Matrices completamente diferentes
+            matrices: [
+                { name: "Suelo Agrícola", a1: 94.2, a2: 95.1 },
+                { name: "Lodo Industrial", a1: 90.5, a2: 92.0 },
+                { name: "Sedimento Río", a1: 96.1, a2: 95.5 }
+            ],
+            analysts: ["Op. Mañana", "Op. Tarde"]
+        };
+
+        let chartInstances = [];
+
+        // ============================================================================
+        // 2. RENDERIZADO DINÁMICO DEL DOM
+        // ============================================================================
+        function renderDashboard(data) {
+            const container = document.getElementById('dashboard-container');
+            
+            // Limpiar gráficos anteriores
+            chartInstances.forEach(c => c.destroy());
+            chartInstances = [];
+
+            // Generar Checklist de la Sección 7
+            const section7HTML = data.section7_summary.map(item => `
+                <div class="bg-white p-4 rounded-xl border border-slate-200 flex flex-col justify-between shadow-sm">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase">${item.title}</span>
+                        ${item.pass 
+                            ? `<svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>` 
+                            : `<svg class="w-4 h-4 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`
+                        }
+                    </div>
+                    <span class="text-sm font-semibold text-slate-700">${item.val}</span>
+                </div>
+            `).join('');
+
+            // Construir HTML completo
+            container.innerHTML = `
+                <div class="max-w-7xl mx-auto space-y-6 fade-in">
+                    
+                    <!-- Header -->
+                    <header class="flex justify-between items-end bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div>
+                            <div class="flex items-center gap-3 mb-1">
+                                <span class="px-3 py-1 ${data.metadata.status === 'Conforme' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'} text-[10px] font-bold rounded-full tracking-wide uppercase">Dictamen: ${data.metadata.status}</span>
+                                <span class="text-xs font-medium text-slate-400">Extracción Dinámica Completada</span>
+                            </div>
+                            <h2 class="text-2xl font-bold text-slate-800">${data.metadata.parameter}</h2>
+                            <p class="text-sm text-slate-500 mt-1">Procedimiento: ${data.metadata.procedure}</p>
+                        </div>
+                        <button onclick="toggleData()" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/30">
+                            Simular Carga de Otro PDF Distinto
+                        </button>
+                    </header>
+
+                    <!-- SECCIÓN 7: ANÁLISIS DE RESULTADOS (Checklist Dinámico) -->
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                            Sección 7: Evaluación de Parámetros
+                        </h3>
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                            ${section7HTML}
+                        </div>
+                    </div>
+
+                    <!-- RANGO DE TRABAJO Y KPIS -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        
+                        <!-- Rango de Trabajo Visual -->
+                        <div class="lg:col-span-2 bg-gradient-to-r from-slate-800 to-slate-900 p-6 rounded-2xl text-white shadow-md relative overflow-hidden">
+                            <div class="absolute top-0 right-0 opacity-10 p-4"><svg class="w-24 h-24" fill="currentColor" viewBox="0 0 24 24"><path d="M2 12h20v2H2zM2 8h20v2H2zM2 16h20v2H2z"/></svg></div>
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 relative z-10">Evaluación de Rango de Trabajo</h3>
+                            
+                            <div class="flex items-center justify-between mb-2 relative z-10">
+                                <div class="text-center">
+                                    <p class="text-sm text-slate-400">Límite Inferior</p>
+                                    <p class="text-xl font-bold">${data.working_range.min} <span class="text-xs font-normal">${data.working_range.unit}</span></p>
+                                </div>
+                                <div class="flex-1 px-8">
+                                    <div class="w-full bg-slate-700 h-2 rounded-full relative">
+                                        <div class="absolute top-0 left-0 h-full bg-indigo-500 rounded-full w-full"></div>
+                                        <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-indigo-500 text-white text-[10px] font-bold px-2 py-1 rounded">Rango Verificado</div>
+                                    </div>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-sm text-slate-400">Límite Superior</p>
+                                    <p class="text-xl font-bold">${data.working_range.max} <span class="text-xs font-normal">${data.working_range.unit}</span></p>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4 mt-6 border-t border-slate-700 pt-4 relative z-10">
+                                <div>
+                                    <p class="text-[10px] text-slate-400 uppercase tracking-wide">Recuperación Global</p>
+                                    <p class="text-2xl font-bold text-emerald-400">${data.working_range.global_recovery}%</p>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] text-slate-400 uppercase tracking-wide">Dispersion (CV)</p>
+                                    <p class="text-2xl font-bold">${data.working_range.cv}%</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Info extra -->
+                        <div class="bg-indigo-50 p-6 rounded-2xl shadow-sm border border-indigo-100 flex flex-col justify-center">
+                            <h3 class="text-sm font-bold text-indigo-900 mb-2">Dinamicidad del Informe</h3>
+                            <p class="text-xs text-indigo-700 mb-4">El sistema ha leído dinámicamente <strong>${data.standards.length}</strong> estándares de calidad y <strong>${data.matrices.length}</strong> matrices ambientales sin importar su nombre en el PDF original.</p>
+                            <div class="text-xs font-mono text-indigo-500 bg-indigo-100/50 p-2 rounded">
+                                Matrices: ${data.matrices.map(m => m.name).join(', ')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- GRÁFICOS DINÁMICOS -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        
+                        <!-- Veracidad por Estándares (Dinámico) -->
+                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                            <div class="mb-4">
+                                <h3 class="text-base font-bold text-slate-800">Veracidad (Recuperación por Estándar)</h3>
+                                <p class="text-xs text-slate-500">Mapeado automáticamente desde los nombres del PDF</p>
+                            </div>
+                            <div class="relative h-64 w-full">
+                                <canvas id="chartEstandares"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Recuperación por Matrices (Dinámico) -->
+                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                            <div class="mb-4">
+                                <h3 class="text-base font-bold text-slate-800">% Recuperación en Matriz (Fortificadas)</h3>
+                                <p class="text-xs text-slate-500">Comparativa ${data.analysts[0]} vs ${data.analysts[1]}</p>
+                            </div>
+                            <div class="relative h-64 w-full">
+                                <canvas id="chartMatrices"></canvas>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            `;
+
+            initCharts(data);
+        }
+
+        // ============================================================================
+        // 3. INICIALIZACIÓN DE GRÁFICOS DINÁMICOS CON CHART.JS
+        // ============================================================================
+        function initCharts(data) {
+            Chart.defaults.font.family = "'Inter', sans-serif";
+            Chart.defaults.color = '#94a3b8';
+
+            // 1. Gráfico de Estándares (Veracidad)
+            // Usa data.standards de manera dinámica
+            const ctxEst = document.getElementById('chartEstandares').getContext('2d');
+            const stdLabels = data.standards.map(s => s.name);
+            const stdData = data.standards.map(s => s.recovery);
+            
+            const chartEst = new Chart(ctxEst, {
+                type: 'bar',
+                data: {
+                    labels: stdLabels,
+                    datasets: [{
+                        label: '% Recuperación',
+                        data: stdData,
+                        backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { 
+                        y: { min: 80, max: 110, title: { display: true, text: '% Recuperación' } },
+                        x: { grid: { display: false } } 
+                    }
+                }
+            });
+            chartInstances.push(chartEst);
+
+            // 2. Gráfico de Matrices (Recuperación)
+            // Usa data.matrices de manera dinámica y crea un dataset por cada analista
+            const ctxMat = document.getElementById('chartMatrices').getContext('2d');
+            const matLabels = data.matrices.map(m => m.name);
+            const dataA1 = data.matrices.map(m => m.a1);
+            const dataA2 = data.matrices.map(m => m.a2);
+
+            const chartMat = new Chart(ctxMat, {
+                type: 'bar',
+                data: {
+                    labels: matLabels,
+                    datasets: [
+                        { label: data.analysts[0], data: dataA1, backgroundColor: '#3B82F6', borderRadius: 4 },
+                        { label: data.analysts[1], data: dataA2, backgroundColor: '#10B981', borderRadius: 4 }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: {usePointStyle: true} } },
+                    scales: { 
+                        y: { min: 85, max: 110, title: { display: true, text: '% Recuperación' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+            chartInstances.push(chartMat);
+        }
+
+        // ============================================================================
+        // 4. LÓGICA DE SIMULACIÓN DE CAMBIO DE PDF
+        // ============================================================================
+        let currentPdf = 'Sn';
+        function toggleData() {
+            if(currentPdf === 'Sn') {
+                currentPdf = 'Pb';
+                renderDashboard(pdf_Plomo);
+            } else {
+                currentPdf = 'Sn';
+                renderDashboard(pdf_Estano);
+            }
+        }
+
+        // Inicializar con los datos de Estaño
+        window.onload = () => renderDashboard(pdf_Estano);
+
+    </script>
+</body>
+</html>

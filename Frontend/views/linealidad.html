@@ -1,0 +1,70 @@
+<section id="sec-linealidad" class="space-y-6 animate-fade-in">
+    <!-- Encabezado y Selector -->
+    <div class="flex justify-between items-center bg-white p-4 rounded-lg border border-slate-300 shadow-sm">
+        <div>
+            <h2 class="text-xl font-bold text-slate-800">5. Linealidad y Sensibilidad</h2>
+            <p class="text-xs text-slate-500">Evaluación de curvas de calibración, coeficientes de determinación y análisis de residuales.</p>
+        </div>
+        <div class="flex items-center space-x-3">
+            <label for="selectParametroLin" class="font-semibold text-sm text-slate-700">Elemento a graficar:</label>
+            <select id="selectParametroLin" onchange="window.renderizarDatosLinealidad(this.value)" class="border border-slate-300 px-4 py-2 rounded font-bold text-blue-700 bg-slate-50 outline-none cursor-pointer shadow-sm">
+                <!-- Las opciones se llenan automáticamente desde app.js -->
+            </select>
+        </div>
+    </div>
+
+    <!-- Contenedor Principal de Linealidad (Oculto inicialmente hasta que haya datos) -->
+    <div id="contenidoLinealidad" class="space-y-6 hidden">
+        
+        <!-- Sección Superior: Estadísticas de la Regresión y Tabla de Datos -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Tarjeta de Estadísticas / Parámetros de la Recta -->
+            <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300 flex flex-col">
+                <h3 class="font-bold text-slate-800 mb-3 text-base border-b pb-2">Parámetros Estadísticos</h3>
+                <div class="overflow-x-auto flex-1">
+                    <table class="w-full text-sm">
+                        <tbody id="tablaStatsLinealidad" class="divide-y divide-slate-200">
+                            <!-- Inyectado dinámicamente desde app.js -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tabla Experimental Dinámica -->
+            <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300 flex flex-col lg:col-span-2">
+                <h3 class="font-bold text-slate-800 mb-3 text-base border-b pb-2">Datos Experimentales de Linealidad</h3>
+                <div class="overflow-x-auto flex-1 max-h-[300px]">
+                    <table class="w-full text-sm text-center border-collapse border border-slate-300">
+                        <thead id="headTablaLinealidad" class="bg-slate-100 text-slate-700 font-bold">
+                            <!-- Cabeceras dinámicas según número de curvas -->
+                        </thead>
+                        <tbody id="bodyTablaLinealidad" class="divide-y divide-slate-300">
+                            <!-- Filas inyectadas dinámicamente desde app.js -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección Inferior: Gráficas (Curvas Individuales y Curva Promedio) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+            
+            <!-- Gráfica de Curvas Individuales (Raw) -->
+            <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300 flex flex-col">
+                <h3 class="font-bold text-slate-800 mb-4 text-base border-b pb-2">Curvas de Calibración Individuales</h3>
+                <div class="relative h-[380px] w-full">
+                    <canvas id="chartCurvasInd"></canvas>
+                </div>
+            </div>
+            
+            <!-- Gráfica de Curva Promedio y Línea de Regresión -->
+            <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300 flex flex-col">
+                <h3 class="font-bold text-slate-800 mb-4 text-base border-b pb-2">Curva Promedio y Línea de Regresión</h3>
+                <div class="relative h-[380px] w-full">
+                    <canvas id="chartCurvaPromedio"></canvas>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>

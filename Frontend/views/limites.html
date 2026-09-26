@@ -1,0 +1,88 @@
+<section id="sec-limites" class="space-y-6 animate-fade-in">
+    <div class="flex justify-between items-center bg-white p-4 rounded-lg border border-slate-300 shadow-sm">
+        <div>
+            <h2 class="text-xl font-bold text-slate-800">Límites de Detección y Cuantificación</h2>
+            <p class="text-xs text-slate-500">Evaluación estadística de MB y LCM libre de atípicos.</p>
+        </div>
+        <div class="flex items-center space-x-3">
+            <label class="font-semibold text-sm text-slate-700">Seleccionar Elemento:</label>
+            <select id="selectElementoGlobal" onchange="window.cambiarElementoGlobal(this.value)" class="border border-slate-300 px-4 py-2 rounded font-bold text-blue-700 bg-slate-50 outline-none"></select>
+        </div>
+    </div>
+    
+    <div id="contenidoElemento" class="space-y-6 hidden">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-300">
+                <div class="text-xs text-slate-500 font-bold uppercase tracking-wider">LOD Estimado (3·s_MB)</div>
+                <div id="stat-lod" class="text-2xl font-extrabold text-indigo-600 mt-1">-</div>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-300">
+                <div class="text-xs text-slate-500 font-bold uppercase tracking-wider">LOQ Estimado (10·s_MB)</div>
+                <div id="stat-loq" class="text-2xl font-extrabold text-indigo-600 mt-1">-</div>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-300">
+                <div class="text-xs text-slate-500 font-bold uppercase tracking-wider">Valor Teórico LCM</div>
+                <div id="stat-teorico" class="text-2xl font-extrabold text-slate-700 mt-1">-</div>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-300">
+                <div class="text-xs text-slate-500 font-bold uppercase tracking-wider">% Error LCM (Global)</div>
+                <div id="stat-error" class="text-2xl font-extrabold text-emerald-600 mt-1">-</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300 flex flex-col">
+                <h3 class="font-bold text-slate-800 mb-3 text-base">Resumen Estadístico del Ensayo</h3>
+                <div class="overflow-x-auto flex-1">
+                    <table class="w-full text-sm text-center border-collapse border border-slate-300 h-full">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-700 font-bold border-b border-slate-300">
+                                <th class="border border-slate-300 p-2.5">Control</th>
+                                <th class="border border-slate-300 p-2.5">Grupo</th>
+                                <th class="border border-slate-300 p-2.5">Promedio (x̄)</th>
+                                <th class="border border-slate-300 p-2.5">Desviación (s)</th>
+                                <th class="border border-slate-300 p-2.5">% Coef. Variación (%CV)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaResultados" class="divide-y divide-slate-300"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300 flex flex-col">
+                <h3 class="font-bold text-slate-800 mb-3 text-base">Datos Brutos por Analista (10 Réplicas)</h3>
+                <div class="overflow-x-auto flex-1">
+                    <table class="w-full text-sm text-center border-collapse border border-slate-300">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-700 font-bold border-b border-slate-300">
+                                <th class="border border-slate-300 p-1.5" rowspan="2">Ensayo</th>
+                                <th class="border border-slate-300 p-1.5 bg-slate-200" colspan="2">Blancos (MB)</th>
+                                <th class="border border-slate-300 p-1.5 bg-indigo-100" colspan="2">Límites (LCM)</th>
+                            </tr>
+                            <tr class="bg-slate-50 text-slate-700 font-bold border-b border-slate-300">
+                                <th class="border border-slate-300 p-1.5">Analista 1</th>
+                                <th class="border border-slate-300 p-1.5">Analista 2</th>
+                                <th class="border border-slate-300 p-1.5">Analista 1</th>
+                                <th class="border border-slate-300 p-1.5">Analista 2</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaDatosBrutos" class="divide-y divide-slate-300">
+                            
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300">
+                <h3 class="font-bold mb-3 text-slate-800 text-base">Dispersión Visual de Blancos de Método (MB)</h3>
+                <canvas id="chartMB" class="max-h-72"></canvas>
+            </div>
+            <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300">
+                <h3 class="font-bold mb-3 text-slate-800 text-base">Dispersión Visual de Límites (LCM)</h3>
+                <canvas id="chartLCM" class="max-h-72"></canvas>
+            </div>
+        </div>
+    </div>
+</section>

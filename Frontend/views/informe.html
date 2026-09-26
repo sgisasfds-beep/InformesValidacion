@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Informe Metrológico de Validación</title>
+    <!-- Tailwind CSS para los estilos base -->
+    <script src="Frontend/tailwindcss.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <!-- ESTILOS EXCLUSIVOS PARA LA IMPRESIÓN / EXPORTACIÓN A PDF -->
+    <style>
+        @media print {
+
+            /* Reseteos básicos */
+            body,
+            html {
+                margin: 0 !important;
+                padding: 0 !important;
+                background-color: #ffffff !important;
+            }
+
+            /* CONFIGURACIÓN DE TABLAS */
+            table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                border: 1px solid #94a3b8 !important;
+                page-break-inside: auto !important;
+                margin-top: 8px !important;
+                margin-bottom: 12px !important;
+            }
+
+            th,
+            td {
+                border: 1px solid #cbd5e1 !important;
+                padding: 6px 8px !important;
+            }
+
+            tr {
+                page-break-inside: avoid !important;
+                page-break-after: auto !important;
+            }
+
+            thead {
+                display: table-header-group !important;
+            }
+
+            tfoot {
+                display: table-footer-group !important;
+            }
+
+            /* CONFIGURACIÓN DE TÍTULOS Y GRÁFICAS */
+            h2,
+            h3 {
+                page-break-after: avoid !important;
+            }
+
+            .pdf-chart-img,
+            .chart-container,
+            .mantener-junto {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                max-width: 100% !important;
+            }
+
+            /* ARREGLO PARA GRIDS DE TAILWIND */
+            .grid {
+                display: flex !important;
+                flex-wrap: wrap !important;
+                gap: 1rem !important;
+            }
+
+            .grid>div {
+                flex: 1 1 100% !important;
+                page-break-inside: avoid !important;
+                box-sizing: border-box !important;
+            }
+
+            .grid.grid-cols-2>div,
+            .md\:grid-cols-2>div {
+                flex: 1 1 45% !important;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-slate-50 min-h-screen">
+
+    <div class="p-6 max-w-7xl mx-auto space-y-6">
+        <!-- BARRA DE CONFIGURACIÓN Y METADATOS DEL INFORME -->
+        <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200 no-print">
+            <h2 class="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                    </path>
+                </svg>
+                Configuración y Metadatos del Informe de Validación
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Selección de Parámetro / Elemento -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Parámetro / Elemento</label>
+                    <select id="selectElementoInforme" onchange="window.cambiarElementoInforme(this.value)"
+                        class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-sm font-bold text-blue-700 focus:ring-2 focus:ring-blue-500">
+                        <option value="Pb">Plomo (Pb)</option>
+                        <option value="Cd">Cadmio (Cd)</option>
+                    </select>
+                </div>
+
+                <!-- Código del Procedimiento -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Código del
+                        Procedimiento</label>
+                    <input type="text" id="inp-inf-codigo" value="PO-AM-012"
+                        class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- Nombre del Procedimiento -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Nombre del
+                        Procedimiento</label>
+                    <input type="text" id="inp-inf-nombre-procedimiento"
+                        value="Determinación de Metales Pesados por Absorción Atómica"
+                        class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- Matriz Principal -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Matriz Principal</label>
+                    <select id="sel-inf-matriz" onchange="window.actualizarSubmatricesAuto()"
+                        class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500">
+                        <option value="Agua">Agua</option>
+                        <option value="Suelo">Suelo</option>
+                        <option value="Lodo">Lodo</option>
+                        <option value="Sedimento">Sedimento</option>
+                        <option value="Residuos Peligrosos">Residuos Peligrosos</option>
+                        <option value="Aire">Aire</option>
+                    </select>
+                </div>
+
+                <!-- Técnica Analítica -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Técnica Analítica</label>
+                    <input type="text" id="inp-inf-tecnica" value="Espectrometría de Absorción Atómica (EAA)"
+                        class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- Método Instrumental -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Método Instrumental
+                        (referencia normativa)</label>
+                    <input type="text" id="inp-inf-norma" value="EPA 200.7"
+                        class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- Método de preparación/digestión -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Método de
+                        Preparación/Digestión</label>
+                    <input type="text" id="inp-inf-metodo-preparacion" value="Standard Methods 3030"
+                        placeholder="Ej. Standard Methods 3030 / EPA 3015A"
+                        class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- Revisión/versión del procedimiento -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Revisión / Versión</label>
+                    <input type="text" id="inp-inf-revision-version" placeholder="Ej. Versión 04, 07/08/2026"
+                        class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- Procedimiento interno -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Procedimiento Interno</label>
+                    <input type="text" id="inp-inf-procedimiento-interno" placeholder="Ej. PO-AM-053"
+                        class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- Tipo de Método -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Tipo de Método</label>
+                    <select id="sel-inf-tipo-metodo"
+                        class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500">
+                        <option value="Normalizado sin modificaciones">Normalizado sin modificaciones</option>
+                        <option value="No Normalizado">No Normalizado</option>
+                        <option value="Modificado">Normalizado Modificado</option>
+                    </select>
+                </div>
+
+                <!-- Tipo de Estudio -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Tipo de Estudio</label>
+                    <select id="sel-inf-tipo-estudio"
+                        class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500">
+                        <option value="">(Automático según Tipo de Método)</option>
+                        <option value="Confirmación de Método">Confirmación de Método</option>
+                        <option value="Validación de Método">Validación de Método</option>
+                    </select>
+                    <p class="text-[11px] text-slate-400 mt-1">Si el método es normalizado sin modificar, se usa
+                        "Confirmación"; si fue modificado, "Validación".</p>
+                </div>
+
+                <!-- Criterio de Incertidumbre -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Criterio de Incertidumbre
+                        Máx. Tolerable (%)</label>
+                    <input type="number" step="any" id="inp-inf-criterio-incertidumbre"
+                        placeholder="Dejar vacío si no hay criterio documentado"
+                        class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- Analista 1 -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Analista 1</label>
+                    <input type="text" id="inp-inf-analista1" value="Analista de Ensayos A"
+                        class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- Analista 2 -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Analista 2</label>
+                    <input type="text" id="inp-inf-analista2" value="Analista de Ensayos B"
+                        class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- Responsable Técnico -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Responsable Técnico</label>
+                    <input type="text" id="inp-inf-resp" value="Director Técnico de Laboratorio"
+                        class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- Fecha -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Fecha del Informe</label>
+                    <input type="date" id="inp-inf-fecha"
+                        class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3 no-print">
+                <button onclick="window.guardarMetadatosYCompilar()"
+                    class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow transition flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                        </path>
+                    </svg>
+                    Generar Informe
+                </button>
+                <button onclick="window.exportarPDF()"
+                    class="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-lg shadow transition flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z">
+                        </path>
+                    </svg>
+                    Descargar PDF Oficial
+                </button>
+                <button onclick="window.exportarTodosPDFsZip(this)"
+                    class="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg shadow transition flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4">
+                        </path>
+                    </svg>
+                    Descargar Todos (ZIP)
+                </button>
+            </div>
+        </div>
+
+        <!-- DOCUMENTO DEL INFORME (VISTA PREVIA E IMPRESIÓN) -->
+        <div id="previewInformeContainer"
+            class="bg-white p-10 rounded-xl shadow-lg border border-slate-300 space-y-8 text-slate-800 leading-relaxed font-sans text-sm">
+
+            <!-- ENCABEZADO OFICIAL DE LABORATORIO -->
+            <div class="border-b-2 border-slate-800 pb-4 flex justify-between items-center">
+                <div>
+                    <h1 id="prev-titulo-informe" class="text-2xl font-black uppercase text-slate-900 tracking-wide">
+                        Informe de Confirmación de Método</h1>
+                    <p class="text-xs text-slate-500 font-semibold uppercase">Sistema de Gestión de la Calidad
+                        conforme a ISO/IEC 17025</p>
+                </div>
+                <div class="text-right font-mono text-xs text-slate-600">
+                    <p id="prev-codigo" class="font-bold text-slate-800">Código: PO-AM-012</p>
+                    <p id="prev-fecha">Fecha: 30/07/2026</p>
+                </div>
+            </div>
+
+            <!-- 1. INFORMACIÓN GENERAL -->
+            <section class="space-y-3 pb-4">
+                <h2 class="text-base font-bold text-blue-900 uppercase border-b border-blue-200 pb-1">1. Información
+                    General y Metadatos</h2>
+                <div id="box-sec-1"
+                    class="grid grid-cols-2 gap-x-6 gap-y-2 text-xs bg-slate-50 p-4 rounded-lg border border-slate-200">
+                    <p><b>Parámetro Analítico / Elemento:</b> <span id="prev-param"
+                            class="font-bold text-blue-700">Plomo (Pb)</span></p>
+                    <p><b>Procedimiento de Análisis:</b> <span id="prev-proc-full">Determinación de Metales Pesados por
+                            Absorción Atómica</span></p>
+                    <p><b>Matriz y Submatrices Aplicables:</b> <span id="prev-matriz-sub">Agua</span></p>
+                    <p><b>Técnica Analítica:</b> <span id="prev-tecnica">Espectrometría de Absorción Atómica
+                            (EAA)</span></p>
+                    <p><b>Método y Estudio:</b> <span id="prev-metodo">Normalizado - Verificación de Método</span></p>
+                    <p><b>Método Instrumental:</b> <span id="prev-norma">Standard Methods 3120 B / EPA 200.7</span></p>
+                </div>
+                <div id="prev-referencias-metodologicas"
+                    class="text-xs bg-blue-50/40 p-3 rounded border border-blue-100 mt-2">
+                </div>
+                <div class="space-y-2 text-xs mt-2">
+                    <p><b>Analistas Ejecutantes:</b> <span id="prev-analistas">Analista de Ensayos A, Analista de
+                            Ensayos B</span></p>
+                    <p><b>Responsable Técnico:</b> <span id="prev-resp">Director Técnico de Laboratorio</span></p>
+                </div>
+            </section>
+
+            <!-- 2. EQUIPOS Y REACTIVOS UTILIZADOS -->
+            <section class="space-y-2">
+                <h2 class="text-base font-bold text-blue-900 uppercase border-b border-blue-200 pb-1">2. Equipos y
+                    Reactivos Utilizados</h2>
+                <p id="prev-equipos-reactivos"
+                    class="text-slate-700 italic bg-blue-50/50 p-3 rounded border border-blue-100 text-xs">
+                    Espectrómetro de Absorción Atómica modelo XX-200, Balanza Analítica (0.0001g), Material Volumétrico
+                    Clase A certificado. Materiales de Referencia Certificados (MRC) trazables al NIST. Ácido Nítrico
+                    (HNO3) grado suprapuro. Agua ultrapura Tipo I (18.2 MΩ·cm).
+                </p>
+            </section>
+
+            <!-- 3. ALCANCE -->
+            <section class="space-y-2">
+                <h2 class="text-base font-bold text-blue-900 uppercase border-b border-blue-200 pb-1">3. Alcance del
+                    Método</h2>
+                <p id="prev-alcance"
+                    class="text-slate-700 bg-slate-50 p-3 rounded border border-slate-200 text-xs text-justify">
+                    Este método establece los lineamientos para la determinación cuantitativa del parámetro seleccionado
+                    en la matriz indicada, cubriendo el rango de trabajo validado. Aplica para las instalaciones del
+                    laboratorio central y evalúa la capacidad de la técnica analítica para cumplir con los límites
+                    regulatorios vigentes, asegurando la trazabilidad e idoneidad de los resultados.
+                </p>
+            </section>
+
+            <!-- 4. MARCO CONCEPTUAL -->
+            <section class="space-y-2">
+                <h2 class="text-base font-bold text-blue-900 uppercase border-b border-blue-200 pb-1">4. Marco
+                    Conceptual</h2>
+                <div id="box-sec-4"
+                    class="space-y-2.5 text-xs text-slate-700 text-justify bg-slate-50 p-4 rounded border border-slate-200 leading-relaxed">
+                    <p><strong>Límite de Detección del Método (LOD):</strong> Corresponde a la concentración mínima de
+                        analito presente en una matriz de ensayo que puede ser detectada analíticamente con un nivel de
+                        confianza estadística especificado (típicamente del 99%), aunque no necesariamente cuantificada
+                        como un valor exacto. Se fundamenta en la variabilidad del ruido de fondo de los blancos de
+                        proceso.</p>
+
+                    <p><strong>Límite de Cuantificación del Método (LOQ / LCM):</strong> Es la menor concentración de
+                        analito en la muestra de ensayo que puede ser determinada cuantitativamente con un grado de
+                        precisión (repetibilidad) y veracidad (porcentaje de error) metrológicamente aceptable bajo las
+                        condiciones operativas habituales del procedimiento.</p>
+
+                    <p><strong>Veracidad (Error Relativo y Recuperación):</strong> Expresa el grado de cercanía o
+                        concordancia entre la media aritmética de un número elevado de valores analíticos medidos y un
+                        valor de referencia aceptado o valor verdadero convencional. Se determina cuantitativamente
+                        mediante el cálculo del Porcentaje de Error Relativo (%Error) y el Porcentaje de Recuperación
+                        (%R).</p>
+
+                    <p><strong>Precisión y Precisión Intermedia:</strong> Representa la proximidad o dispersión
+                        existente entre los resultados analíticos independientes obtenidos bajo condiciones estipuladas
+                        de ensayo. La <em>precisión intermedia</em> evalúa las variaciones operativas intra-laboratorio
+                        producidas por distintos analistas en diferentes jornadas de trabajo e instrumentos.</p>
+
+                    <p><strong>Rango de Trabajo (RT):</strong> Intervalo de concentraciones entre el límite cuantitativo
+                        inferior (LOQ) y el límite superior de calibración o ensayo, dentro del cual la metodología
+                        analítica demuestra exactitud, precisión y respuesta adecuada bajo condiciones operativas
+                        validadas.</p>
+
+                    <p><strong>Linealidad:</strong> Capacidad intrínseca de la metodología analítica para obtener
+                        respuestas o señales instrumentales que resulten directamente proporcionales a la concentración
+                        de analito presente en la muestra, dentro de un rango dinamico de trabajo especificado y
+                        validado mediante regresión lineal.</p>
+
+                    <p><strong>Sensibilidad Analítica:</strong> Magnitud que define la variación en la respuesta
+                        instrumental expresada por unidad de cambio en la concentración del analito (representada
+                        físicamente por la pendiente de la recta de calibración, m). Caracteriza la capacidad del
+                        método para diferenciar variaciones mínimas de concentración entre soluciones contiguas con
+                        veracidad.</p>
+
+                    <p><strong>Incertidumbre de Medición:</strong> Parámetro no negativo asociado al resultado de una
+                        medición, que caracteriza la dispersión de los valores que podrían ser razonablemente atribuidos
+                        al mensurando.</p>
+                </div>
+            </section>
+
+            <!-- 5. METODOLOGÍA ESTADÍSTICA Y METROLÓGICA -->
+            <section class="space-y-2">
+                <h2 class="text-base font-bold text-blue-900 uppercase border-b border-blue-200 pb-1">5. Metodología
+                    Estadística y Metrológica</h2>
+                <div id="box-sec-5"
+                    class="space-y-2.5 text-xs text-slate-700 text-justify bg-slate-50 p-4 rounded border border-slate-200 leading-relaxed">
+                    <p><strong>Rechazo y Tratamiento de Datos Atípicos:</strong> Todos los conjuntos de datos obtenidos
+                        durante las corridas de validación se someten previamente a la prueba de significancia de Grubbs
+                        (al nivel de confianza del 95%, α = 0.05) para la identificación y posible descarte de
+                        valores anómalos, evaluando G calculated frente a G crítico.</p>
+
+                    <p><strong>Determinación de Límites Analíticos (LOD y LOQ):</strong> El LOD se obtiene mediante el
+                        cálculo de 3 veces la desviación estándar (3SD) de un mínimo de 10 blancos de proceso
+                        independientes. La confirmación del LOQ se efectúa evaluando 10 réplicas del estándar
+                        correspondiente al Límite de Cuantificación Teórico (LCM).</p>
+
+                    <p><strong>Evaluación de la Veracidad:</strong> La veracidad se determina a partir de la evaluación
+                        de 10 réplicas de estándares de calidad con concentraciones de LCM, CCV (Verificación Continua
+                        de Calibración) y EA (Estándar Adicionado / Adición, según la naturaleza dinámica del parámetro
+                        en evaluación), procesados por dos analistas durante diferentes días de trabajo.</p>
+
+                    <p><strong>Evaluación del Rango de Trabajo:</strong> Se verifica el comportamiento de las muestras
+                        al aplicar factores de dilución y concentraciones reales de trabajo por analista, evaluando la
+                        consistencia de la recuperación y la detección de posibles valores atípicos mediante el Test de
+                        Grubbs.</p>
+
+                    <p><strong>Evaluación de Precisión Intermedia:</strong> Tras verificar la distribución normal de los
+                        datos mediante el test de Shapiro-Wilk (α = 0.05), se aplica un Análisis de Varianza de
+                        un factor (ANOVA) o prueba de hipótesis F para verificar la homogeneidad de varianzas intra e
+                        inter-analistas.</p>
+
+                    <p><strong>Evaluación de la Sensibilidad y Linealidad:</strong> Se computa el valor medio de la
+                        pendiente (m) y su desviación estándar asociada (SD_m) mediante la evaluación consecutiva de 3
+                        curvas de calibración.</p>
+
+                    <p><strong>Estimación de la Incertidumbre de Medición:</strong> Se aplica el enfoque holístico
+                        combinando componentes de Incertidumbre Tipo A e Incertidumbre Tipo B.</p>
+                </div>
+            </section>
+
+            <!-- 6. COMPILACIÓN DE TABLAS BRUTAS Y GRÁFICAS -->
+            <section class="space-y-8">
+                <h2 class="text-lg font-extrabold text-blue-900 uppercase border-b-2 border-blue-300 pb-1">6. Resultados
+                </h2>
+            </section>
+
+            <!-- 6.1 LÍMITE DE DETECCIÓN Y CUANTIFICACIÓN -->
+            <div id="subsec-6-1" class="space-y-4">
+                <h3 class="text-sm font-bold text-slate-800 uppercase bg-slate-100 p-2 border-l-4 border-blue-600">
+                    6.1 Límite de Detección y Cuantificación
+                </h3>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-center">
+                    <div class="border border-slate-300 p-3 rounded bg-white">
+                        <div class="text-[11px] font-bold text-slate-500 uppercase">LOD Estimado (3·s_MB)</div>
+                        <div id="inf-stat-lod" class="text-lg font-extrabold text-blue-700 font-mono mt-1">--</div>
+                    </div>
+                    <div class="border border-slate-300 p-3 rounded bg-white">
+                        <div class="text-[11px] font-bold text-slate-500 uppercase">LOQ Estimado (10·s_MB)</div>
+                        <div id="inf-stat-loq" class="text-lg font-extrabold text-blue-700 font-mono mt-1">--</div>
+                    </div>
+                    <div class="border border-slate-300 p-3 rounded bg-white">
+                        <div class="text-[11px] font-bold text-slate-500 uppercase">Valor Teórico LCM</div>
+                        <div id="inf-stat-teorico-lcm" class="text-lg font-extrabold text-slate-800 font-mono mt-1">
+                            --</div>
+                    </div>
+                    <div class="border border-slate-300 p-3 rounded bg-white">
+                        <div class="text-[11px] font-bold text-slate-500 uppercase">% Error LCM (Global)</div>
+                        <div id="inf-stat-error-lcm" class="text-lg font-extrabold text-emerald-700 font-mono mt-1">
+                            --</div>
+                    </div>
+                </div>
+
+                <div class="mantener-junto">
+                    <h4 class="text-xs font-bold text-slate-700 mb-1">Definición y Justificación del Límite
+                        Operativo/Reportable (LOD, LOQ y LCM)</h4>
+                    <div id="prev-tabla-lod-loq-lcm"></div>
+                </div>
+
+                <div>
+                    <h4 class="text-xs font-bold text-slate-700 mb-1">Tabla 1. Registro Primario de Lecturas
+                        Directas para MB y LCM por Analista</h4>
+                    <table class="w-full text-xs text-center border-collapse border border-slate-300">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-700 font-bold border-b border-slate-300">
+                                <th class="border border-slate-300 p-1.5" rowspan="2">Ensayo</th>
+                                <th class="border border-slate-300 p-1.5 bg-slate-200" colspan="2">Blanco del Método
+                                    (MB)</th>
+                                <th class="border border-slate-300 p-1.5 bg-blue-100" colspan="2">Límite de
+                                    Cuantificación (LCM)</th>
+                            </tr>
+                            <tr class="bg-slate-50 text-slate-700 font-bold border-b border-slate-300">
+                                <th class="border border-slate-300 p-1.5">Analista 1</th>
+                                <th class="border border-slate-300 p-1.5">Analista 2</th>
+                                <th class="border border-slate-300 p-1.5">Analista 1</th>
+                                <th class="border border-slate-300 p-1.5">Analista 2</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inf-tabla-datos-mb-lcm" class="divide-y divide-slate-300"></tbody>
+                    </table>
+                </div>
+
+                <div class="mantener-junto">
+                    <h4 class="text-xs font-bold text-slate-700 mb-1">Tabla 2. Resumen Estadístico de MB y LCM
+                        (Promedio, Desviación Estándar y Coeficiente de Variación)</h4>
+                    <table class="w-full text-xs text-center border-collapse border border-slate-300">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-700 font-bold border-b border-slate-300">
+                                <th class="border border-slate-300 p-1.5">Control</th>
+                                <th class="border border-slate-300 p-1.5">Grupo / Analista</th>
+                                <th class="border border-slate-300 p-1.5">Promedio (x̄)</th>
+                                <th class="border border-slate-300 p-1.5">Desviación Estándar (s)</th>
+                                <th class="border border-slate-300 p-1.5">Coeficiente de Variación (%CV)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inf-tabla-resumen-mb-lcm" class="divide-y divide-slate-300"></tbody>
+                    </table>
+                </div>
+
+                <div class="mantener-junto border border-slate-300 bg-white p-3 rounded">
+                    <h4 class="text-xs font-bold text-slate-700 mb-2">Figura 1. Gráfica de Dispersión Visual para el
+                        Límite de Cuantificación (LCM)</h4>
+                    <div class="relative w-full h-64">
+                        <canvas id="chart-inf-lcm"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6.2 PRECISIÓN -->
+            <div id="subsec-6-2" class="space-y-4 mantener-junto">
+                <h3 class="text-sm font-bold text-slate-800 uppercase bg-slate-100 p-2 border-l-4 border-blue-600">
+                    6.2 Precisión (LCM, CCV, EA)
+                </h3>
+
+                <div>
+                    <h4 class="text-xs font-bold text-slate-700 mb-1">Tabla 3. Consolidado de Pruebas de Normalidad
+                        (Shapiro-Wilk, d'Agostino), ANOVA y Pruebas Paramétricas/No Paramétricas</h4>
+                    <table class="w-full text-xs text-center border-collapse border border-slate-300">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-700 font-bold border-b border-slate-300">
+                                <th class="border border-slate-300 p-1.5">Control</th>
+                                <th class="border border-slate-300 p-1.5">Prueba de Normalidad (Shapiro W / p)</th>
+                                <th class="border border-slate-300 p-1.5">Prueba de Normalidad (d'Agostino DA / p)</th>
+                                <th class="border border-slate-300 p-1.5">Distribución Normal</th>
+                                <th class="border border-slate-300 p-1.5">ANOVA 2-Factores (F / valor-p)</th>
+                                <th class="border border-slate-300 p-1.5">Prueba Alternativa / Conclusión</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inf-tabla-consolidado-precision" class="divide-y divide-slate-300"></tbody>
+                    </table>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="border border-slate-300 bg-white p-3 rounded mantener-junto">
+                        <h4 class="text-[11px] font-bold text-slate-700 mb-2">Figura 2a. Perfil de Precisión - LCM</h4>
+                        <div class="relative w-full h-52">
+                            <canvas id="chart-inf-prec-LCM"></canvas>
+                        </div>
+                    </div>
+                    <div class="border border-slate-300 bg-white p-3 rounded mantener-junto">
+                        <h4 class="text-[11px] font-bold text-slate-700 mb-2">Figura 2b. Perfil de Precisión - CCV</h4>
+                        <div class="relative w-full h-52">
+                            <canvas id="chart-inf-prec-CCV"></canvas>
+                        </div>
+                    </div>
+                    <div class="border border-slate-300 bg-white p-3 rounded mantener-junto">
+                        <h4 class="text-[11px] font-bold text-slate-700 mb-2">Figura 2c. Perfil de Precisión - EA</h4>
+                        <div class="relative w-full h-52">
+                            <canvas id="chart-inf-prec-EA"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6.3 EXACTITUD -->
+            <div id="subsec-6-3" class="space-y-4 pdf-grupo">
+                <h3 class="text-sm font-bold text-slate-800 uppercase bg-slate-100 p-2 border-l-4 border-blue-600">
+                    6.3 Exactitud (Veracidad, Recuperación y Datos Atípicos)
+                </h3>
+
+                <!-- 6.3.1 Porcentaje de Recuperación y Error por Replicado (Tabla 4) -->
+                <div id="subsec-6-3-1" class="space-y-2">
+                    <h4 class="text-xs font-bold text-blue-800 uppercase border-b border-blue-100 pb-1">6.3.1
+                        Porcentaje de Recuperación y Error por Replicado</h4>
+                    <div>
+                        <h5 class="text-xs font-bold text-slate-700 mb-1">Tabla 4. Porcentaje de Recuperación y
+                            Error por Replicado (Analista 1 vs. Analista 2) - LCM, CCV, EA</h5>
+                        <table class="w-full text-xs text-center border-collapse border border-slate-300">
+                            <thead>
+                                <tr class="bg-slate-100 font-bold text-slate-700 border-b border-slate-300">
+                                    <th class="border border-slate-300 p-1" rowspan="2">Control / Réplica</th>
+                                    <th class="border border-slate-300 p-1 bg-blue-50 text-blue-900" colspan="3">
+                                        Analista 1</th>
+                                    <th class="border border-slate-300 p-1 bg-indigo-50 text-indigo-900" colspan="3">
+                                        Analista 2</th>
+                                </tr>
+                                <tr class="bg-slate-50 font-bold text-slate-700 border-b border-slate-300">
+                                    <th class="border border-slate-300 p-1">Valor</th>
+                                    <th class="border border-slate-300 p-1">% Error</th>
+                                    <th class="border border-slate-300 p-1">% Recup.</th>
+                                    <th class="border border-slate-300 p-1">Valor</th>
+                                    <th class="border border-slate-300 p-1">% Error</th>
+                                    <th class="border border-slate-300 p-1">% Recup.</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inf-tabla-exactitud-individuales" class="divide-y divide-slate-300"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 6.3.2 Registro de Datos Atípicos Eliminados (Tabla 5) -->
+                <div id="subsec-6-3-2" class="space-y-2">
+                    <h4 class="text-xs font-bold text-blue-800 uppercase border-b border-blue-100 pb-1">6.3.2
+                        Registro de Datos Atípicos Eliminados</h4>
+                    <div>
+                        <h5 class="text-xs font-bold text-slate-700 mb-1">Tabla 5. Registro de Datos Atípicos
+                            Eliminados (Test de Grubbs α = 0.05)</h5>
+                        <table class="w-full text-xs text-center border-collapse border border-slate-300">
+                            <thead>
+                                <tr class="bg-red-50 text-red-800 font-bold border-b border-slate-300">
+                                    <th class="border border-slate-300 p-1.5">Control de Calidad</th>
+                                    <th class="border border-slate-300 p-1.5">Valor Identificado</th>
+                                    <th class="border border-slate-300 p-1.5">Analista</th>
+                                    <th class="border border-slate-300 p-1.5">G Calculado</th>
+                                    <th class="border border-slate-300 p-1.5">G Crítico</th>
+                                    <th class="border border-slate-300 p-1.5">Estatus</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inf-tabla-outliers-eliminados" class="divide-y divide-slate-300"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 6.3.3 Gráficas de Recuperación (Figuras 3a, 3b, 3c) -->
+                <div id="subsec-6-3-3" class="space-y-2">
+                    <h4 class="text-xs font-bold text-blue-800 uppercase border-b border-blue-100 pb-1">6.3.3
+                        Gráficas de % Recuperación por Replicado</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="border border-slate-300 bg-white p-3 rounded mantener-junto">
+                            <h4 class="text-[11px] font-bold text-slate-700 mb-2">Figura 3a. % Recuperación - LCM</h4>
+                            <div class="relative w-full h-52"><canvas id="chart-inf-exa-LCM"></canvas></div>
+                        </div>
+                        <div class="border border-slate-300 bg-white p-3 rounded mantener-junto">
+                            <h4 class="text-[11px] font-bold text-slate-700 mb-2">Figura 3b. % Recuperación - CCV</h4>
+                            <div class="relative w-full h-52"><canvas id="chart-inf-exa-CCV"></canvas></div>
+                        </div>
+                        <div class="border border-slate-300 bg-white p-3 rounded mantener-junto">
+                            <h4 class="text-[11px] font-bold text-slate-700 mb-2">Figura 3c. % Recuperación - EA</h4>
+                            <div class="relative w-full h-52"><canvas id="chart-inf-exa-EA"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+                <div id="subsec-6-3-muestras-dinamico" class="pdf-grupo"></div>
+            </div>
+
+            <!-- 6.4 RANGO DE TRABAJO (NUEVA SECCIÓN) -->
+            <div id="subsec-6-4" class="space-y-4 pdf-grupo">
+                <h3 class="text-sm font-bold text-slate-800 uppercase bg-slate-100 p-2 border-l-4 border-blue-600">
+                    6.4 Evaluación de Rango de Trabajo (RT)
+                </h3>
+
+                <!-- Resumen de Tarjetas Estadísticas por Analista y Consolidado Global -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                    <!-- Analista 1 -->
+                    <div class="border border-slate-300 p-3.5 rounded-lg bg-white space-y-2 shadow-sm">
+                        <div class="flex justify-between items-center border-b pb-1.5">
+                            <h4 class="font-bold text-slate-800 uppercase text-xs">Analista 1</h4>
+                            <span id="inf-rt-a1-count"
+                                class="text-[10px] bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded-full">0
+                                lecturas</span>
+                        </div>
+                        <div class="space-y-1">
+                            <div class="flex justify-between"><span class="text-slate-500">Promedio:</span> <span
+                                    id="inf-rt-a1-prom" class="font-semibold text-slate-800">--</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">Desv. Estándar:</span> <span
+                                    id="inf-rt-a1-std" class="font-semibold text-slate-800">--</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">Error Promedio:</span> <span
+                                    id="inf-rt-a1-err-prom" class="font-semibold text-slate-800">--</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">% Rec. Promedio:</span> <span
+                                    id="inf-rt-a1-rec-prom" class="font-semibold text-slate-800">--</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">Test de Grubbs:</span> <span
+                                    id="inf-rt-a1-grubbs" class="font-semibold text-slate-800">--</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Analista 2 -->
+                    <div class="border border-slate-300 p-3.5 rounded-lg bg-white space-y-2 shadow-sm">
+                        <div class="flex justify-between items-center border-b pb-1.5">
+                            <h4 class="font-bold text-slate-800 uppercase text-xs">Analista 2</h4>
+                            <span id="inf-rt-a2-count"
+                                class="text-[10px] bg-purple-100 text-purple-700 font-bold px-2 py-0.5 rounded-full">0
+                                lecturas</span>
+                        </div>
+                        <div class="space-y-1">
+                            <div class="flex justify-between"><span class="text-slate-500">Promedio:</span> <span
+                                    id="inf-rt-a2-prom" class="font-semibold text-slate-800">--</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">Desv. Estándar:</span> <span
+                                    id="inf-rt-a2-std" class="font-semibold text-slate-800">--</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">Error Promedio:</span> <span
+                                    id="inf-rt-a2-err-prom" class="font-semibold text-slate-800">--</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">% Rec. Promedio:</span> <span
+                                    id="inf-rt-a2-rec-prom" class="font-semibold text-slate-800">--</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">Test de Grubbs:</span> <span
+                                    id="inf-rt-a2-grubbs" class="font-semibold text-slate-800">--</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Consolidado Global -->
+                    <div class="border border-slate-300 p-3.5 rounded-lg bg-white space-y-2 shadow-sm">
+                        <div class="flex justify-between items-center border-b pb-1.5">
+                            <h4 class="font-bold text-slate-800 uppercase text-xs">Consolidado Global</h4>
+                            <span id="inf-rt-global-count"
+                                class="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full">0
+                                lecturas</span>
+                        </div>
+                        <div class="space-y-1">
+                            <div class="flex justify-between"><span class="text-slate-500">Promedio Global:</span> <span
+                                    id="inf-rt-global-prom" class="font-semibold text-slate-800">--</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">Desv. Estándar Global:</span>
+                                <span id="inf-rt-global-std" class="font-semibold text-slate-800">--</span>
+                            </div>
+                            <div class="flex justify-between"><span class="text-slate-500">Valor Teórico:</span> <span
+                                    id="inf-rt-valor-teorico-card" class="font-bold text-blue-700">--</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">% Error Global:</span> <span
+                                    id="inf-rt-global-err" class="font-semibold text-slate-800">--</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">% Rec. Global:</span> <span
+                                    id="inf-rt-global-rec" class="font-semibold text-slate-800">--</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabla Interactiva / Datos de Rango de Trabajo -->
+                <div class="mantener-junto">
+                    <h4 class="text-xs font-bold text-slate-700 mb-1">Tabla 6. Registro de Lecturas e Indicadores del
+                        Rango de Trabajo (RT)</h4>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs text-center border-collapse border border-slate-300">
+                            <thead>
+                                <tr class="bg-slate-100 text-slate-700 font-bold border-b border-slate-300">
+                                    <th class="border border-slate-300 p-1.5">#</th>
+                                    <th class="border border-slate-300 p-1.5">Fecha Análisis</th>
+                                    <th class="border border-slate-300 p-1.5">Analista</th>
+                                    <th class="border border-slate-300 p-1.5">Estándar</th>
+                                    <th class="border border-slate-300 p-1.5">Valor Teórico (mg/L)</th>
+                                    <th class="border border-slate-300 p-1.5">Valor Extraído</th>
+                                    <th class="border border-slate-300 p-1.5 bg-blue-50 text-blue-900">Factor Dilución
+                                    </th>
+                                    <th class="border border-slate-300 p-1.5 bg-emerald-50 text-emerald-900">
+                                        Concentración (mg/L)</th>
+                                    <th class="border border-slate-300 p-1.5">% Error</th>
+                                    <th class="border border-slate-300 p-1.5">% Recuperación</th>
+                                    <th class="border border-slate-300 p-1.5">Prueba Grubbs</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inf-tabla-datos-rango-trabajo" class="divide-y divide-slate-300">
+                                <!-- Inyectado dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6.5 LINEALIDAD - SENSIBILIDAD (DESPLAZADO) -->
+            <div id="subsec-6-5" class="space-y-4">
+                <h3 class="text-sm font-bold text-slate-800 uppercase bg-slate-100 p-2 border-l-4 border-blue-600">
+                    6.5 Linealidad - Sensibilidad
+                </h3>
+
+                <div id="contenedor-ras-calcio"></div>
+                <div id="contenedor-ras-magnesio"></div>
+                <div id="contenedor-ras-sodio"></div>
+
+                <div id="contenedor-aguas-estatico">
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                        <!-- Tabla con los parámetros estadísticos -->
+                        <div class="border border-slate-300 bg-white p-3 rounded">
+                            <h4 class="text-xs font-bold text-slate-700 mb-2">Tabla 7. Parámetros Estadísticos de
+                                Regresión</h4>
+                            <table class="w-full text-xs">
+                                <tbody id="inf-tabla-stats-linealidad" class="divide-y divide-slate-200">
+                                    <!-- Inyectado por JS -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Datos experimentales de linealidad -->
+                        <div class="border border-slate-300 bg-white p-3 rounded md:col-span-2">
+                            <h4 class="text-xs font-bold text-slate-700 mb-2">Tabla 8. Datos Experimentales de
+                                Linealidad</h4>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-xs text-center border-collapse border border-slate-300">
+                                    <thead id="inf-head-tabla-linealidad" class="bg-slate-100 text-slate-700 font-bold">
+                                    </thead>
+                                    <tbody id="inf-body-tabla-linealidad" class="divide-y divide-slate-300">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gráficas de curvas de calibración -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="border border-slate-300 bg-white p-3 rounded mantener-junto">
+                            <h4 class="text-xs font-bold text-slate-700 mb-2">Figura 4a. Curvas de Calibración
+                                Individuales</h4>
+                            <div class="relative w-full h-64">
+                                <canvas id="chart-inf-lin-ind"></canvas>
+                            </div>
+                        </div>
+                        <div class="border border-slate-300 bg-white p-3 rounded mantener-junto">
+                            <h4 class="text-xs font-bold text-slate-700 mb-2">Figura 4b. Curva Promedio y Línea de
+                                Regresión</h4>
+                            <div class="relative w-full h-64">
+                                <canvas id="chart-inf-lin-prom"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6.6 RESUMEN DE INCERTIDUMBRES COMBINADAS (DESPLAZADO) -->
+            <div id="subsec-6-6" class="space-y-4 mantener-junto">
+                <h3 class="text-sm font-bold text-slate-800 uppercase bg-slate-100 p-2 border-l-4 border-blue-600">
+                    6.6 Resumen de Incertidumbres Combinadas
+                </h3>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
+
+                    <!-- Bloque Izquierdo: Tabla y Resultados -->
+                    <div
+                        class="border border-slate-300 bg-white p-3.5 rounded-lg md:col-span-2 flex flex-col justify-between shadow-sm">
+                        <div>
+                            <h4 class="text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide">
+                                Tabla 9. Contribución de Fuentes a la Incertidumbre
+                            </h4>
+
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-xs border-collapse border border-slate-300">
+                                    <thead>
+                                        <tr class="bg-slate-100 text-slate-700 font-bold border-b border-slate-300">
+                                            <th class="border border-slate-300 p-2 text-left">Fuente de Incertidumbre
+                                            </th>
+                                            <th class="border border-slate-300 p-2 text-right">Contribución Relativa (%)
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="inf-tabla-resumen-incertidumbre-body"
+                                        class="divide-y divide-slate-200 font-medium text-slate-700">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Tarjetas de resultados principales -->
+                        <div class="mt-4 pt-3 border-t border-slate-200">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="bg-blue-50 border border-blue-200 p-3 rounded-lg text-blue-900">
+                                    <div class="text-[10px] font-bold uppercase text-blue-800">Incertidumbre Combinada
+                                        ($u_{c,rel}$)</div>
+                                    <div id="inf-val-uc-total" class="text-base font-extrabold font-mono mt-0.5">0.00000
+                                    </div>
+                                </div>
+                                <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-lg text-emerald-900">
+                                    <div class="text-[10px] font-bold uppercase text-emerald-800">Incertidumbre
+                                        Expandida ($U_{rel}$)</div>
+                                    <div id="inf-val-u-expandida" class="text-base font-extrabold font-mono mt-0.5">±
+                                        0.00 %</div>
+                                </div>
+                            </div>
+                            <p class="text-[10px] text-slate-500 italic mt-2 border-l-2 border-slate-300 pl-2">
+                                * Incertidumbre expandida calculada con un factor de cobertura $k = 2$ (nivel de
+                                confianza ~95.45%).
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Bloque Derecho: Gráfica de Varianza -->
+                    <div
+                        class="border border-slate-300 bg-white p-3.5 rounded-lg flex flex-col justify-between shadow-sm">
+                        <h4 class="text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide">
+                            Figura 5. Gráfico de Contribución
+                        </h4>
+
+                        <div class="relative h-60 min-h-[220px] w-full flex items-center justify-center my-auto">
+                            <canvas id="chart-inf-incertidumbre"></canvas>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- 6.7 ROBUSTEZ (PRUEBA DE YOUDEN) (DESPLAZADO) -->
+            <section id="sec-6-7-robustez" class="space-y-4 pdf-grupo"
+                style="display: none; page-break-before: always;">
+                <h2 class="text-base font-bold text-blue-900 uppercase border-b border-blue-200 pb-1 mt-6">
+                    6.7 Robustez (Prueba de Youden)
+                </h2>
+
+                <!-- 6.7.1 Condiciones Variables (Simbología) -->
+                <div id="sec-6-7-1-simbologia" class="mantener-junto space-y-2">
+                    <h3 class="text-sm font-bold text-slate-800">6.7.1 Condiciones Variables (Simbología)</h3>
+                    <div class="overflow-x-auto mt-2">
+                        <table class="w-full text-xs text-left border border-slate-300" id="tabla-robustez-simbologia">
+                            <thead class="bg-blue-900 text-white">
+                                <tr>
+                                    <th class="p-2 w-1/3 text-center border-r border-blue-800">Valor de la condición
+                                        variable (Simbología)</th>
+                                    <th class="p-2">Factor o parámetro modificado / sin modificar</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-robustez-simbologia">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 6.7.2 Promedios por Escenario -->
+                <div id="sec-6-7-2-escenarios" class="space-y-3 mt-4 pdf-grupo">
+                    <h3 class="text-sm font-bold text-slate-800">6.7.2 Promedios por Escenario</h3>
+                    <div id="contenedor-escenarios-robustez" class="space-y-4 mt-2 pdf-grupo">
+                    </div>
+                </div>
+
+                <!-- 6.7.3 Evaluación de Criterios (Prueba de Youden) -->
+                <div id="sec-6-7-3-criterios" class="mantener-junto space-y-2 mt-4">
+                    <h3 class="text-sm font-bold text-slate-800">6.7.3 Evaluación de Criterios</h3>
+                    <div class="overflow-x-auto mt-2">
+                        <table class="w-full text-xs text-center border border-slate-300" id="tabla-robustez-youden">
+                            <thead class="bg-blue-900 text-white">
+                                <tr>
+                                    <th class="p-2 border-r border-blue-800">Comparación</th>
+                                    <th class="p-2 border-r border-blue-800">Sin modificar (X)</th>
+                                    <th class="p-2 border-r border-blue-800">Modificado (x)</th>
+                                    <th class="p-2 border-r border-blue-800">Diferencia (DI)</th>
+                                    <th class="p-2 border-r border-blue-800">Desviación Estándar</th>
+                                    <th class="p-2">Límite de Aceptación</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-robustez-youden">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 7. ANÁLISIS DE RESULTADOS E INCERTIDUMBRE -->
+            <section class="space-y-4">
+                <h2 class="text-base font-bold text-blue-900 uppercase border-b border-blue-200 pb-1">7. Análisis de
+                    Resultados e Incertidumbre</h2>
+
+                <div class="border border-slate-300 rounded overflow-hidden">
+                    <table class="w-full text-xs text-left border-collapse">
+                        <tbody class="divide-y divide-slate-200">
+                            <tr class="bg-slate-50">
+                                <td class="p-3 font-bold text-slate-800 w-1/4 border-r border-slate-300">Rechazo de
+                                    datos</td>
+                                <td class="p-3 text-slate-700 leading-relaxed" id="prev-sec-rechazo">--</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3 font-bold text-slate-800 w-1/4 border-r border-slate-300">Límite de
+                                    detección del método</td>
+                                <td class="p-3 text-slate-700 leading-relaxed" id="prev-sec-lod">--</td>
+                            </tr>
+                            <tr class="bg-slate-50">
+                                <td class="p-3 font-bold text-slate-800 w-1/4 border-r border-slate-300">Límite de
+                                    cuantificación del método</td>
+                                <td class="p-3 text-slate-700 leading-relaxed" id="prev-sec-loq">--</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3 font-bold text-slate-800 w-1/4 border-r border-slate-300">Linealidad
+                                </td>
+                                <td class="p-3 text-slate-700 leading-relaxed" id="prev-sec-linealidad">--</td>
+                            </tr>
+                            <tr class="bg-slate-50">
+                                <td class="p-3 font-bold text-slate-800 w-1/4 border-r border-slate-300">
+                                    Sensibilidad
+                                </td>
+                                <td class="p-3 text-slate-700 leading-relaxed" id="prev-sec-sensibilidad"></td>
+                            </tr>
+                            <tr>
+                                <td class="p-3 font-bold text-slate-800 w-1/4 border-r border-slate-300">Veracidad
+                                </td>
+                                <td class="p-3 text-slate-700 leading-relaxed" id="prev-sec-veracidad">--</td>
+                            </tr>
+                            <tr class="bg-slate-50">
+                                <td class="p-3 font-bold text-slate-800 w-1/4 border-r border-slate-300">
+                                    Precisión-Precisión intermedia</td>
+                                <td class="p-3 text-slate-700 leading-relaxed" id="prev-sec-precision">--</td>
+                            </tr>
+                            <tr id="fila-conclusion-robustez" style="display: none;">
+                                <td class="p-3 font-bold text-slate-800 w-1/4 border-r border-slate-300">
+                                    Robustez (Prueba de Youden)
+                                </td>
+                                <td class="p-3 text-slate-700 leading-relaxed">
+                                    <p id="texto-conclusion-robustez">--</p>
+                                </td>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="p-3 font-bold text-slate-800 w-1/4 border-r border-slate-300">%
+                                    Recuperación
+                                    en matriz</td>
+                                <td class="p-3 text-slate-700 leading-relaxed" id="prev-sec-recuperacion-matriz">--
+                                </td>
+                            </tr>
+                            <tr class="bg-slate-50">
+                                <td class="p-3 font-bold text-slate-800 w-1/4 border-r border-slate-300">Rango de
+                                    trabajo</td>
+                                <td class="p-3 text-slate-700 leading-relaxed" id="prev-sec-rango-trabajo">--</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3 font-bold text-slate-800 w-1/4 border-r border-slate-300">
+                                    Incertidumbre
+                                </td>
+                                <td class="p-3 text-slate-700 leading-relaxed" id="prev-sec-incertidumbre">--</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 8. CONCLUSIONES TÉCNICAS -->
+            <section class="space-y-2 mantener-junto">
+                <h2 class="text-base font-bold text-blue-900 uppercase border-b border-blue-200 pb-1">8.
+                    Conclusiones
+                    Técnicas</h2>
+                <div id="prev-conclusiones"
+                    class="text-xs text-slate-700 bg-slate-50 p-4 rounded border border-slate-200">
+                </div>
+            </section>
+
+            <!-- 9. DECLARACIÓN DE CONFORMIDAD -->
+            <section class="space-y-2 mantener-junto pb-6">
+                <h2 class="text-base font-bold text-blue-900 uppercase border-b border-blue-200 pb-1">9. Declaración
+                    de
+                    Conformidad</h2>
+                <div id="prev-declaracion-conformidad"
+                    class="text-xs text-slate-800 bg-green-50 p-4 rounded border border-green-200 text-justify">
+                </div>
+
+                <!-- FIRMAS -->
+                <div class="pt-16 grid grid-cols-2 gap-12 text-center text-xs mt-8 mantener-junto pb-4">
+                    <div>
+                        <div class="border-t-2 border-slate-400 pt-2 font-bold text-slate-800 uppercase"
+                            id="firma-analista">Analista de Ensayos</div>
+                        <p class="text-slate-500">Analista(s) Ejecutante(s)</p>
+                    </div>
+                    <div>
+                        <div class="border-t-2 border-slate-400 pt-2 font-bold text-slate-800 uppercase"
+                            id="firma-resp">Director Técnico de Laboratorio</div>
+                        <p class="text-slate-500">Aprobación Técnica y Metrológica</p>
+                    </div>
+                </div>
+            </section>
+        </div> <!-- CIERRE: previewInformeContainer -->
+    </div> <!-- CIERRE: p-6 max-w-7xl mx-auto space-y-6 -->
+
+    <script>
+        window.exportarPDF = async function () {
+            const { jsPDF } = window.jspdf;
+
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const margin = 10;
+            const usableWidth = pageWidth - (margin * 2);
+            let cursorY = margin;
+
+            const container = document.getElementById('previewInformeContainer');
+            const blocks = Array.from(container.children);
+
+            const originalBorder = container.style.border;
+            const originalShadow = container.style.boxShadow;
+            container.style.border = 'none';
+            container.style.boxShadow = 'none';
+
+            for (let i = 0; i < blocks.length; i++) {
+                const block = blocks[i];
+
+                const canvas = await html2canvas(block, {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: '#ffffff'
+                });
+
+                const imgData = canvas.toDataURL('image/png');
+                const imgWidth = usableWidth;
+                const imgHeight = (canvas.height * usableWidth) / canvas.width;
+
+                if (cursorY + imgHeight > pageHeight - margin && cursorY > margin) {
+                    pdf.addPage();
+                    cursorY = margin;
+                }
+
+                pdf.addImage(imgData, 'PNG', margin, cursorY, imgWidth, imgHeight);
+                cursorY += imgHeight + 4;
+            }
+
+            container.style.border = originalBorder;
+            container.style.boxShadow = originalShadow;
+
+            pdf.save('Informe_Validacion_Laboratorio_SGI.pdf');
+        };
+
+        window.guardarMetadatosYCompilar = function () {
+            // Lógica interna de guardado y compilación
+        };
+
+        window.cambiarElementoInforme = function (val) {
+            document.getElementById('prev-param').innerText = val === 'Pb' ? 'Plomo (Pb)' : 'Cadmio (Cd)';
+        };
+
+        window.actualizarSubmatricesAuto = function () {
+            // Lógica para actualizar campos
+        };
+    </script>
+</body>
+
+</html>

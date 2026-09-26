@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analizador Inteligente de Validaciones LIMS</title>
+    <!-- Se actualizó al CDN oficial de Tailwind -->
+    <script src="tailwindcss.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F8FAFC;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .pulse-border {
+            animation: pulseBorder 2s infinite;
+        }
+
+        @keyframes pulseBorder {
+            0% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+            }
+        }
+
+        .upload-zone.dragover {
+            background-color: #EFF6FF;
+            border-color: #3B82F6;
+        }
+
+        /* Estilos para las tablas */
+        .tabla-datos th {
+            background-color: #f8fafc;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .tabla-datos td {
+            padding: 1rem;
+            border-bottom: 1px solid #f1f5f9;
+            color: #334155;
+            font-size: 0.875rem;
+        }
+
+        .tabla-datos tr:last-child td {
+            border-bottom: none;
+        }
+
+        .tabla-datos tr:hover td {
+            background-color: #f8fafc;
+        }
+
+        /* KPI grid: se ajusta automáticamente al número real de indicadores */
+        .kpi-grid {
+            display: grid;
+            gap: 1rem;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        }
+
+        /* Tarjeta del responsable técnico */
+        .avatar-circle {
+            width: 2.75rem;
+            height: 2.75rem;
+            border-radius: 9999px;
+            background: linear-gradient(135deg, #4F46E5, #3B82F6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
+        }
+
+        /* Tarjetas del anexo de tablas */
+        .tabla-card {
+            transition: border-color .2s ease, transform .2s ease;
+        }
+
+        .tabla-card:hover {
+            border-color: #93c5fd;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+
+<body class="text-slate-700 h-screen flex overflow-hidden">
+
+    <!-- Sidebar Lateral -->
+    <aside class="w-64 bg-white shadow-lg flex flex-col justify-between z-20 flex-shrink-0">
+        <div class="p-6">
+            <div class="flex items-center gap-3 mb-10 mt-2">
+                <div
+                    class="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/30">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z">
+                        </path>
+                    </svg>
+                </div>
+                <h1 class="text-xl font-bold text-slate-800 tracking-tight">AI Validator</h1>
+            </div>
+            <nav class="space-y-2">
+                <button
+                    class="w-full text-left px-4 py-3 rounded-xl bg-blue-50 text-blue-700 font-semibold transition-all flex items-center gap-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12">
+                        </path>
+                    </svg> Extracción PDF
+                </button>
+                <button onclick="irAAnexo()"
+                    class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-500 font-medium transition-all flex items-center gap-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2">
+                        </path>
+                    </svg> Tablas del Informe
+                </button>
+                <button
+                    class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-500 font-medium transition-all flex items-center gap-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+                        </path>
+                    </svg> Histórico
+                </button>
+            </nav>
+        </div>
+    </aside>
+
+    <main class="flex-1 relative overflow-y-auto w-full">
+        <!-- VISTA 1: UPLOAD ZONE -->
+        <div id="view-upload"
+            class="absolute inset-0 flex flex-col items-center justify-center p-8 transition-opacity duration-500 z-10 bg-slate-50">
+            <div class="text-center mb-8 max-w-lg fade-in">
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">Acceso a Validaciones LIMS</h2>
+                <p class="text-slate-500">Ingresa el código único del informe para extraer los datos de la base de datos
+                    y generar el dashboard interactivo.</p>
+            </div>
+
+            <div class="w-full max-w-xl bg-white border border-slate-200 shadow-lg rounded-2xl p-8 text-center fade-in"
+                style="animation-delay: 0.1s;">
+                <label class="block text-sm font-bold text-slate-700 uppercase mb-3 text-left">Código del Informe (Ej:
+                    INF-Pb-839201-45)</label>
+                <div class="flex gap-3">
+                    <input type="text" id="input-codigo-informe" placeholder="Pega el código aquí..."
+                        class="w-full bg-slate-50 border border-slate-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-mono">
+                    <button id="btn-buscar-informe"
+                        class="px-6 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/30 whitespace-nowrap flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                        Buscar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- VISTA 2: LOADING -->
+        <div id="view-loading"
+            class="absolute inset-0 flex flex-col items-center justify-center p-8 bg-slate-50 z-10 hidden opacity-0 transition-opacity duration-500">
+            <div class="w-full max-w-md bg-white p-8 rounded-3xl shadow-xl border border-slate-100 text-center">
+                <div class="inline-block relative w-20 h-20 mb-6">
+                    <svg class="animate-spin text-blue-600 w-full h-full" xmlns="http://www.w3.org/2000/svg" fill="none"
+                        viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                        </circle>
+                        <path class="opacity-75" fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                        </path>
+                    </svg>
+                    <div class="absolute inset-0 flex items-center justify-center text-xs font-bold text-blue-800"
+                        id="progress-text">0%</div>
+                </div>
+                <h3 class="text-lg font-bold text-slate-800 mb-2">Analizando Documento...</h3>
+                <p id="loading-status" class="text-sm text-slate-500 mb-6">Leyendo tablas del PDF...</p>
+                <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div id="progress-bar"
+                        class="bg-gradient-to-r from-blue-500 to-indigo-600 h-2 rounded-full transition-all duration-300"
+                        style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VISTA 3: DASHBOARD PROFESIONAL -->
+        <div id="view-dashboard" class="hidden opacity-0 transition-opacity duration-700 p-8 z-0">
+            <div class="max-w-7xl mx-auto space-y-6">
+
+                <!-- Header -->
+                <header
+                    class="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-6 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 fade-in"
+                    style="animation-delay: 0.1s;">
+                    <div class="flex items-start gap-5">
+                        <div class="p-3 bg-blue-50 rounded-xl">
+                            <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                </path>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-3 mb-1">
+                                <span id="doc-estado"
+                                    class="px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-full tracking-wide uppercase shadow-sm">Validación
+                                    Conforme</span>
+                            </div>
+                            <h2 id="doc-titulo" class="text-2xl font-bold text-slate-800">—</h2>
+                            <p id="doc-subtitulo" class="text-sm text-slate-500 mt-1">—</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-5">
+                        <!-- Tarjeta Responsable Técnico -->
+                        <div
+                            class="flex items-center gap-3 pl-2 pr-4 py-2 rounded-xl border border-slate-100 bg-slate-50/70">
+                            <div id="rt-avatar" class="avatar-circle">--</div>
+                            <div class="leading-tight">
+                                <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wide">Responsable
+                                    Técnico</p>
+                                <p id="rt-nombre" class="text-sm font-bold text-slate-800">—</p>
+                                <p id="rt-cargo" class="text-xs text-slate-500">—</p>
+                            </div>
+                            <div class="hidden sm:flex flex-col items-end border-l border-slate-200 pl-3 ml-1">
+                                <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <p id="rt-fecha" class="text-[10px] text-slate-400 mt-1">—</p>
+                            </div>
+                        </div>
+
+                        <button onclick="window.location.reload()"
+                            class="px-4 py-2 bg-white border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2 flex-shrink-0">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                                </path>
+                            </svg> Cargar Otro
+                        </button>
+                    </div>
+                </header>
+
+                <!-- KPIs -->
+                <div id="kpi-container" class="kpi-grid fade-in" style="animation-delay: 0.2s;"></div>
+
+                <!-- GRÁFICAS FILA 1 -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 fade-in" style="animation-delay: 0.3s;">
+                    <!-- Linealidad -->
+                    <div
+                        class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative group">
+                        <div class="flex justify-between items-start mb-6">
+                            <div>
+                                <h3 id="graf-linealidad-titulo" class="text-base font-bold text-slate-800">Modelado de
+                                    Linealidad y Rango</h3>
+                                <p id="graf-linealidad-subtitulo" class="text-xs text-slate-500">Curva de calibración
+                                    instrumental</p>
+                            </div>
+                            <button onclick="abrirModal('linealidad')"
+                                class="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 transition-colors flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z">
+                                    </path>
+                                </svg>
+                                Ver Datos Tabulares
+                            </button>
+                        </div>
+                        <div class="relative h-72 w-full"><canvas id="chartLinealidad"></canvas></div>
+                    </div>
+
+                    <!-- Desempeño Inter-Analista -->
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 id="graf-analistas-titulo" class="text-base font-bold text-slate-800">Desempeño
+                                    Inter-Analista</h3>
+                                <p id="graf-analistas-subtitulo" class="text-xs text-slate-500">Comparativa de
+                                    competencias</p>
+                            </div>
+                            <button onclick="abrirModal('analistas')"
+                                class="p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-slate-500 transition-colors"
+                                title="Ver Datos">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z">
+                                    </path>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="relative h-64 w-full flex items-center justify-center"><canvas
+                                id="chartRadarAnalistas"></canvas></div>
+                    </div>
+                </div>
+
+                <!-- GRÁFICAS FILA 2 -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 fade-in" style="animation-delay: 0.4s;">
+                    <!-- Incertidumbre -->
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div class="flex justify-between items-start mb-1">
+                            <h3 id="graf-incertidumbre-titulo" class="text-base font-bold text-slate-800">Presupuesto
+                                Incertidumbre</h3>
+                            <button onclick="abrirModal('incertidumbre')"
+                                class="p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-slate-500 transition-colors"><svg
+                                    class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z">
+                                    </path>
+                                </svg></button>
+                        </div>
+                        <p id="graf-incertidumbre-subtitulo" class="text-xs text-slate-500 mb-6">Distribución porcentual
+                            de los aportes</p>
+                        <div class="relative h-56 w-full"><canvas id="chartIncertidumbre"></canvas></div>
+                    </div>
+
+                    <!-- Recuperación por Matriz -->
+                    <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 id="graf-matrices-titulo" class="text-base font-bold text-slate-800">Recuperación
+                                    por Matriz</h3>
+                                <p id="graf-matrices-subtitulo" class="text-xs text-slate-500">Evaluación de veracidad
+                                    en muestras reales</p>
+                            </div>
+                            <button onclick="abrirModal('matrices')"
+                                class="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 transition-colors flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z">
+                                    </path>
+                                </svg> Tablas de Veracidad
+                            </button>
+                        </div>
+                        <div class="relative h-56 w-full"><canvas id="chartMatrices"></canvas></div>
+                    </div>
+                </div>
+
+                <!-- GRÁFICAS FILA 3 -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 fade-in" style="animation-delay: 0.5s;">
+                    <!-- Precisión -->
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 id="graf-precision-titulo" class="text-base font-bold text-slate-800">Evaluación de
+                                    Precisión (%CV)</h3>
+                                <p id="graf-precision-subtitulo" class="text-xs text-slate-500">Frente al criterio de
+                                    Horwitz</p>
+                            </div>
+                            <button onclick="abrirModal('precision')"
+                                class="p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-slate-500 transition-colors"><svg
+                                    class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z">
+                                    </path>
+                                </svg></button>
+                        </div>
+                        <div class="relative h-64 w-full"><canvas id="chartPrecision"></canvas></div>
+                    </div>
+
+                    <!-- Robustez -->
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 id="graf-robustez-titulo" class="text-base font-bold text-slate-800">Test de
+                                    Robustez (Youden)</h3>
+                                <p id="graf-robustez-subtitulo" class="text-xs text-slate-500">Efecto de factores
+                                    controlados sobre el resultado</p>
+                            </div>
+                            <button onclick="abrirModal('robustez')"
+                                class="p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-slate-500 transition-colors"><svg
+                                    class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z">
+                                    </path>
+                                </svg></button>
+                        </div>
+                        <div class="relative h-64 w-full"><canvas id="chartYouden"></canvas></div>
+                    </div>
+                </div>
+
+                <!-- ANEXO: TODAS LAS TABLAS DEL INFORME -->
+                <section id="anexo-tablas" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 fade-in"
+                    style="animation-delay: 0.6s;">
+                    <div class="flex justify-between items-center mb-1">
+                        <h3 class="text-base font-bold text-slate-800">Anexo — Tablas Completas del Informe</h3>
+                        <span id="anexo-contador" class="text-xs font-semibold text-slate-400">—</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mb-5">Incluye todas las tablas extraídas del documento, estén o no
+                        asociadas a una gráfica.</p>
+                    <div id="anexo-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                </section>
+
+            </div>
+        </div>
+
+        <!-- MODAL GENÉRICO DE TABLAS -->
+        <div id="modal-container"
+            class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 opacity-0 pointer-events-none transition-opacity duration-300">
+            <div id="modal-card"
+                class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col scale-95 transition-transform duration-300">
+                <div class="flex justify-between items-center p-5 border-b border-slate-100 flex-shrink-0">
+                    <h3 id="modal-titulo" class="text-lg font-bold text-slate-800">Título de la Tabla</h3>
+                    <button onclick="cerrarModal()" class="text-slate-400 hover:text-slate-700 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="overflow-auto p-2">
+                    <table class="w-full tabla-datos">
+                        <thead id="modal-thead"></thead>
+                        <tbody id="modal-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let informeData = null;
+
+        async function cargarInformeDesdeBD(codigoUnico) {
+            try {
+                const codigoLimpio = codigoUnico.trim();
+                const respuesta = await fetch(`http://localhost:8000/api/obtener-reporte/${codigoLimpio}`);
+                console.log("Estado de la respuesta:", respuesta.status);
+                const dataCruda = await respuesta.clone().text();
+                console.log("Datos crudos del servidor:", dataCruda);
+
+                if (!respuesta.ok) {
+                    throw new Error("No se pudo encontrar el informe en la base de datos.");
+                }
+
+                const datosDB = await respuesta.json();
+                transformarDatosParaDashboard(datosDB);
+                renderDashboard(informeData);
+
+            } catch (error) {
+                console.error("Error al cargar el informe:", error);
+                alert("Error al cargar el informe. Verifica el código o la conexión.");
+
+                viewLoading.classList.add('hidden');
+                viewUpload.classList.remove('hidden');
+                viewUpload.style.opacity = '1';
+            }
+        }
+
+        function transformarDatosParaDashboard(datosDB) {
+            // Extracción directa de la base de datos (todo viaja en datos_completos)
+            const metadatosFormulario = datosDB.datos_completos;
+            const parametro = datosDB.parametro;
+            const matriz = datosDB.matriz;
+            const resultadosMetrologicos = datosDB.datos_completos; 
+            informeData = {
+                meta: {
+                    titulo: `Informe: ${parametro} en Matrices Ambientales`,
+                    subtitulo: `${metadatosFormulario.codigo_procedimiento || 'N/A'} | ${metadatosFormulario.tecnica || 'N/A'}`,
+                    estado: metadatosFormulario.tipo_estudio || "Validación",
+                    responsableTecnico: {
+                        nombre: metadatosFormulario.responsable || "N/A",
+                        cargo: "Director Técnico",
+                        fecha: `Aprobado ${metadatosFormulario.fecha || 'N/A'}`
+                    }
+                },
+                kpis: [
+                    { label: "Matriz Principal", valor: matriz, extra: metadatosFormulario.norma },
+                    { label: "Analista 1", valor: metadatosFormulario.analista1 || 'Analista 1', extra: "Evaluado", tono: "destacado" },
+                    { label: "Analista 2", valor: metadatosFormulario.analista2 || 'Analista 2', extra: "Evaluado", tono: "destacado" }
+                ],
+                graficas: {},
+                tablas: []
+            };
+            if (resultadosMetrologicos) {
+                // 1. Gráfica de Linealidad
+                if (resultadosMetrologicos.linealidad && resultadosMetrologicos.linealidad.tabla) {
+                    const tablaLin = resultadosMetrologicos.linealidad.tabla;
+                    informeData.graficas.linealidad = {
+                        titulo: "Modelado de Linealidad",
+                        subtitulo: "Curva Promedio Instrumental",
+                        concentraciones: tablaLin.map(fila => fila.concentracion),
+                        senales: tablaLin.map(fila => fila.promedio)
+                    };
+                    const r2Val = resultadosMetrologicos.linealidad.stats?.r2 || "--";
+                    informeData.kpis.push({ label: "Coef. Determinación (R²)", valor: r2Val, tono: "exito" });
+                    
+                    informeData.tablas.push({
+                        id: "linealidad",
+                        titulo: "Datos Experimentales de Linealidad",
+                        headers: ["Concentración", "Promedio Instrumental", "Conc. Calculada", "% Error"],
+                        rows: tablaLin.map(r => [r.concentracion, r.promedio, r.conc_calculada, r.error_pct + '%'])
+                    });
+                }
+                // 2. Gráfica de Incertidumbre
+                if (resultadosMetrologicos.resultadoIncertidumbre && resultadosMetrologicos.resultadoIncertidumbre.varianzas) {
+                    const incData = resultadosMetrologicos.resultadoIncertidumbre;
+                    informeData.graficas.incertidumbre = {
+                        titulo: "Presupuesto Incertidumbre",
+                        subtitulo: "Distribución de Varianza",
+                        etiquetas: incData.filas.map(f => f.fuente),
+                        porcentajes: incData.varianzas
+                    };
+                    
+                    // APLICAMOS TOFIXED(2) AQUÍ:
+                    const incertidumbreRedondeada = Number(incData.u_expandida_porc).toFixed(2);
+                    
+                    informeData.kpis.push({ 
+                        label: "Incertidumbre Expandida", 
+                        valor: `± ${incertidumbreRedondeada}%`, 
+                        tono: "alerta" 
+                    });
+                }
+                // 3. Gráfica Radar (Desempeño Inter-Analista basado en el % de Error)
+                const ejesRadar = [];
+                const dataA1 = [];
+                const dataA2 = [];
+                ['mb', 'lcm', 'ccv', 'ea'].forEach(ctrl => {
+                    if(resultadosMetrologicos[ctrl] && resultadosMetrologicos[ctrl].analista_1 && resultadosMetrologicos[ctrl].analista_2) {
+                        ejesRadar.push(ctrl.toUpperCase());
+                        // Transformamos el error a un puntaje sobre 100 para el Radar
+                        dataA1.push(Math.max(0, 100 - (resultadosMetrologicos[ctrl].analista_1.error_pct || 0)));
+                        dataA2.push(Math.max(0, 100 - (resultadosMetrologicos[ctrl].analista_2.error_pct || 0)));
+                    }
+                });
+                if(ejesRadar.length > 0) {
+                    informeData.graficas.analistas = {
+                        titulo: "Desempeño Inter-Analista",
+                        subtitulo: "Puntuación de Veracidad (100 - Error %)",
+                        ejes: ejesRadar,
+                        nombreAnalista1: metadatosFormulario.analista1 || "Analista 1",
+                        analista1: dataA1,
+                        nombreAnalista2: metadatosFormulario.analista2 || "Analista 2",
+                        analista2: dataA2
+                    };
+                }
+                // 4. Gráfica de Recuperación por Matrices Ambientales
+                if (resultadosMetrologicos.muestras && Object.keys(resultadosMetrologicos.muestras).length > 0) {
+                    const labelsMat = [];
+                    const matA1 = [];
+                    const matA2 = [];
+                    
+                    Object.keys(resultadosMetrologicos.muestras).forEach(matKey => {
+                        const replicas = resultadosMetrologicos.muestras[matKey];
+                        labelsMat.push(matKey.toUpperCase());
+                        
+                        // Calculamos el promedio de recuperación de adición por cada analista
+                        const repA1 = replicas.filter(r => r.analista === "Analista 1" || r.analista === metadatosFormulario.analista1);
+                        const repA2 = replicas.filter(r => r.analista === "Analista 2" || r.analista === metadatosFormulario.analista2);
+                        
+                        matA1.push(repA1.length ? (repA1.reduce((sum, r) => sum + r.recuperacion_adic, 0) / repA1.length) : 100);
+                        matA2.push(repA2.length ? (repA2.reduce((sum, r) => sum + r.recuperacion_adic, 0) / repA2.length) : 100);
+                    });
+                    
+                    informeData.graficas.matrices = {
+                        titulo: "Recuperación por Matriz",
+                        subtitulo: "Porcentaje de Veracidad en Muestras",
+                        labels: labelsMat,
+                        analista1: matA1,
+                        analista2: matA2
+                    };
+                }
+                // 5. Gráfica de Precisión (Coeficiente de Variación)
+                const nivelesPrec = [];
+                const cvRep = [];
+                const cvInt = [];
+                const limiteHorwitz = [];
+                ['lcm', 'ccv', 'ea'].forEach(ctrl => {
+                    if(resultadosMetrologicos[ctrl] && resultadosMetrologicos[ctrl].global) {
+                        nivelesPrec.push(ctrl.toUpperCase());
+                        
+                        const cvA1 = resultadosMetrologicos[ctrl].analista_1?.cv || 0;
+                        const cvA2 = resultadosMetrologicos[ctrl].analista_2?.cv || 0;
+                        // Promedio de CVs individuales = Repetibilidad
+                        cvRep.push((cvA1 + cvA2) / 2);
+                        
+                        // CV Global = Precisión Intermedia
+                        cvInt.push(resultadosMetrologicos[ctrl].global.cv || 0);
+                        
+                        limiteHorwitz.push(15); // Límite general (puede ajustarse luego a ecuación real de Horwitz)
+                    }
+                });
+                
+                if(nivelesPrec.length > 0) {
+                    informeData.graficas.precision = {
+                        titulo: "Evaluación de Precisión (%CV)",
+                        subtitulo: "Frente al Criterio de Tolerancia",
+                        niveles: nivelesPrec,
+                        cvRep: cvRep,
+                        cvInt: cvInt,
+                        limiteHorwitz: limiteHorwitz
+                    };
+                }
+                // 6. Gráfica de Robustez (Factores de Youden)
+                 if (resultadosMetrologicos.robustez && resultadosMetrologicos.robustez.datos_crudos) {
+                    const letrasMayus = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+                    const factoresLabels = [];
+                    const desviaciones = [];
+                    letrasMayus.forEach(mayus => {
+                        const minus = mayus.toLowerCase();
+                        const crudosMayus = resultadosMetrologicos.robustez.datos_crudos[mayus] || [];
+                        const crudosMinus = resultadosMetrologicos.robustez.datos_crudos[minus] || [];
+                        // Solo graficar si existen ambos pares (ej: A y a)
+                        if (crudosMayus.length > 0 && crudosMinus.length > 0) {
+                            const promMayus = crudosMayus.reduce((s, item) => s + item.valor, 0) / crudosMayus.length;
+                            const promMinus = crudosMinus.reduce((s, item) => s + item.valor, 0) / crudosMinus.length;
+                            
+                            // Diferencia Di de Youden (Nominal vs Modificado)
+                            const diferenciaDi = promMayus - promMinus; 
+                            
+                            // Extraer el nombre del factor (ej: "Volumen de muestra")
+                            const descFactor = resultadosMetrologicos.robustez.factores[minus] 
+                                || resultadosMetrologicos.robustez.factores[mayus] 
+                                || `Factor ${mayus}`;
+                            
+                            // Limpiar el nombre para que se vea bien en el eje de la gráfica
+                            const labelCorto = descFactor.split('(')[0].trim() + ` (${mayus} vs ${minus})`;
+                            
+                            factoresLabels.push(labelCorto);
+                            desviaciones.push(diferenciaDi); // Se grafica el impacto del factor
+                        }
+                    });
+                    informeData.graficas.robustez = {
+                        titulo: "Test de Robustez (Diseño Youden)",
+                        subtitulo: "Diferencia de Promedios (Di)",
+                        factores: factoresLabels,
+                        desviacion: desviaciones
+                    };
+                }
+            }
+            // Metadatos Generales (Sección Anexo)
+            informeData.tablas.push({
+                id: "metadatos_generales",
+                titulo: "Configuración y Metadatos del Ensayo",
+                headers: ["Parámetro", "Valor"],
+                rows: [
+                    ["Código Informe", datosDB.codigo_informe],
+                    ["Procedimiento Interno", metadatosFormulario.procedimiento_interno],
+                    ["Método Preparación", metadatosFormulario.metodo_preparacion],
+                    ["Revisión/Versión", metadatosFormulario.revision],
+                    ["Tipo de Método", metadatosFormulario.tipo_metodo]
+                ]
+            });
+        }
+
+        const viewUpload = document.getElementById('view-upload');
+        const viewLoading = document.getElementById('view-loading');
+        const viewDashboard = document.getElementById('view-dashboard');
+
+        const inputCodigo = document.getElementById('input-codigo-informe');
+        const btnBuscar = document.getElementById('btn-buscar-informe');
+
+        let chartInstances = {};
+
+        btnBuscar.addEventListener('click', () => {
+            const codigo = inputCodigo.value.trim();
+            if (codigo) iniciarProcesamiento(codigo);
+            else alert("Por favor ingresa un código válido.");
+        });
+
+        inputCodigo.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') btnBuscar.click();
+        });
+
+        function iniciarProcesamiento(codigoUnico) {
+            viewUpload.style.opacity = '0';
+            setTimeout(() => {
+                viewUpload.classList.add('hidden');
+                viewLoading.classList.remove('hidden');
+                setTimeout(() => viewLoading.style.opacity = '1', 50);
+
+                let p = 0;
+                const bar = document.getElementById('progress-bar');
+                const txt = document.getElementById('progress-text');
+                const status = document.getElementById('loading-status');
+
+                status.innerText = "Conectando con la base de datos SQL...";
+
+                const int = setInterval(() => {
+                    p += Math.floor(Math.random() * 20) + 10;
+                    if (p >= 90) {
+                        p = 90;
+                        clearInterval(int);
+                        status.innerText = "Procesando datos y calculando KPIs...";
+                        cargarInformeDesdeBD(codigoUnico).then(() => {
+                            bar.style.width = '100%';
+                            txt.innerText = '100%';
+                        });
+                    }
+                    bar.style.width = p + '%'; txt.innerText = p + '%';
+                }, 150);
+            }, 500);
+        }
+
+        function renderDashboard(data) {
+            viewLoading.style.opacity = '0';
+            setTimeout(() => {
+                viewLoading.classList.add('hidden');
+                viewDashboard.classList.remove('hidden');
+                setTimeout(() => {
+                    viewDashboard.style.opacity = '1';
+                    Chart.defaults.font.family = "'Inter', sans-serif";
+                    Chart.defaults.color = '#94a3b8';
+
+                    // Lógicas de renderizado agregadas y corregidas
+                    renderHeader(data.meta);
+                    renderKPIs(data.kpis);
+                    renderTitulosGraficas(data.graficas); 
+                    renderAnexoTablas(data.tablas);
+
+                    if (data.graficas.linealidad) crearGraficaLinealidad(data.graficas.linealidad);
+                    if (data.graficas.analistas) crearGraficaRadar(data.graficas.analistas);
+                    if (data.graficas.incertidumbre) crearGraficaIncertidumbre(data.graficas.incertidumbre);
+                    if (data.graficas.matrices) crearGraficaMatrices(data.graficas.matrices);
+                    if (data.graficas.precision) crearGraficaPrecision(data.graficas.precision);
+                    if (data.graficas.robustez) crearGraficaRobustez(data.graficas.robustez);
+
+                }, 50);
+            }, 500);
+        }
+
+        function irAAnexo() {
+            const el = document.getElementById('anexo-tablas');
+            if (el && !viewDashboard.classList.contains('hidden')) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        function iniciales(nombreCompleto) {
+            return nombreCompleto
+                .replace(/^(Dr\.|Dra\.|Ing\.|Lic\.|Sr\.|Sra\.)\s*/i, '')
+                .split(' ')
+                .filter(Boolean)
+                .slice(0, 2)
+                .map(p => p[0].toUpperCase())
+                .join('');
+        }
+
+        function renderHeader(meta) {
+            document.getElementById('doc-titulo').innerText = meta.titulo;
+            document.getElementById('doc-subtitulo').innerText = meta.subtitulo;
+
+            const estadoBadge = document.getElementById('doc-estado');
+            estadoBadge.innerText = meta.estado;
+            const noConforme = /no\s*conforme|rechaza/i.test(meta.estado);
+            estadoBadge.className = "px-3 py-1 text-[10px] font-bold rounded-full tracking-wide uppercase shadow-sm " +
+                (noConforme ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700");
+
+            const rt = meta.responsableTecnico;
+            document.getElementById('rt-avatar').innerText = iniciales(rt.nombre);
+            document.getElementById('rt-nombre').innerText = rt.nombre;
+            document.getElementById('rt-cargo').innerText = rt.cargo;
+            document.getElementById('rt-fecha').innerText = rt.fecha;
+        }
+
+        function renderKPIs(kpis) {
+            const cont = document.getElementById('kpi-container');
+            const tonos = {
+                exito: { valor: "text-emerald-600" },
+                alerta: { valor: "text-rose-500" },
+                destacado: { wrap: "bg-gradient-to-br from-blue-600 to-indigo-700 text-white", label: "text-blue-200", valor: "text-white", extra: "text-blue-100" }
+            };
+            cont.innerHTML = kpis.map(k => {
+                const t = tonos[k.tono] || {};
+                const wrapClass = t.wrap || "bg-white border border-slate-100";
+                const labelClass = t.label || "text-slate-400";
+                const valorClass = t.valor || "text-slate-800";
+                const extraClass = t.extra || "text-slate-500";
+                const unidad = k.unidad ? `<p class="text-xs font-semibold ${t.extra ? 'text-blue-100' : 'text-slate-500'}">${k.unidad}</p>` : '';
+                return `
+                    <div class="p-5 rounded-2xl shadow-sm ${wrapClass}">
+                        <h3 class="text-[10px] font-bold ${labelClass} uppercase tracking-wider mb-1">${k.label}</h3>
+                        <div class="flex items-baseline gap-2"><p class="text-2xl font-black ${valorClass}">${k.valor}</p>${unidad}</div>
+                        ${k.extra ? `<p class="text-[10px] ${extraClass} mt-2 leading-tight">${k.extra}</p>` : ''}
+                    </div>`;
+            }).join('');
+        }
+
+        function renderTitulosGraficas(graficas) {
+            Object.keys(graficas).forEach(id => {
+                const t = document.getElementById(`graf-${id}-titulo`);
+                const s = document.getElementById(`graf-${id}-subtitulo`);
+                if (t) t.innerText = graficas[id].titulo;
+                if (s) s.innerText = graficas[id].subtitulo;
+            });
+        }
+
+        function renderAnexoTablas(tablas) {
+            document.getElementById('anexo-contador').innerText = `${tablas.length} tabla${tablas.length === 1 ? '' : 's'}`;
+            const grid = document.getElementById('anexo-grid');
+            grid.innerHTML = tablas.map(t => `
+                <button onclick="abrirModal('${t.id}')" class="tabla-card text-left bg-slate-50/70 hover:bg-white border border-slate-200 rounded-xl p-4 flex flex-col gap-2">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="p-2 bg-blue-50 text-blue-600 rounded-lg flex-shrink-0">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                        </div>
+                        <span class="text-[10px] font-semibold text-slate-400">${t.rows.length}×${t.headers.length}</span>
+                    </div>
+                    <p class="text-sm font-bold text-slate-800 leading-snug">${t.titulo}</p>
+                    <p class="text-xs text-blue-600 font-semibold mt-auto">Ver tabla completa →</p>
+                </button>
+            `).join('');
+        }
+
+        const modalContainer = document.getElementById('modal-container');
+        const modalCard = document.getElementById('modal-card');
+        const modalTitulo = document.getElementById('modal-titulo');
+        const tHead = document.getElementById('modal-thead');
+        const tBody = document.getElementById('modal-tbody');
+
+        const ESTADOS_POSITIVOS = ["cumple", "conforme", "no significativo", "aprobado", "satisfactorio", "firmado digitalmente"];
+
+        function abrirModal(tablaId) {
+            const tabla = informeData.tablas.find(t => t.id === tablaId);
+            if (!tabla) return;
+
+            modalTitulo.innerText = tabla.titulo;
+            tHead.innerHTML = `<tr>${tabla.headers.map(h => `<th class="whitespace-nowrap">${h}</th>`).join('')}</tr>`;
+            tBody.innerHTML = tabla.rows.map(fila => `
+                <tr>${fila.map(valor => {
+                const esPositivo = ESTADOS_POSITIVOS.includes(String(valor).toLowerCase());
+                return `<td class="${esPositivo ? 'font-bold text-emerald-600' : ''}">${valor}</td>`;
+            }).join('')}</tr>
+            `).join('');
+
+            modalContainer.classList.remove('pointer-events-none', 'opacity-0');
+            modalContainer.classList.add('opacity-100');
+            setTimeout(() => modalCard.classList.remove('scale-95'), 10);
+        }
+
+        function cerrarModal() {
+            modalCard.classList.add('scale-95');
+            modalContainer.classList.remove('opacity-100');
+            modalContainer.classList.add('opacity-0');
+            setTimeout(() => modalContainer.classList.add('pointer-events-none'), 300);
+        }
+
+        modalContainer.addEventListener('click', (e) => {
+            if (e.target === modalContainer) cerrarModal();
+        });
+
+        function crearGraficaLinealidad(d) {
+            const ctx = document.getElementById('chartLinealidad').getContext('2d');
+            let grad = ctx.createLinearGradient(0, 0, 0, 300);
+            grad.addColorStop(0, 'rgba(79, 70, 229, 0.2)'); grad.addColorStop(1, 'rgba(79, 70, 229, 0)');
+            chartInstances['lin'] = new Chart(ctx, { type: 'line', data: { labels: d.concentraciones, datasets: [{ data: d.senales, borderColor: '#4F46E5', backgroundColor: grad, fill: true, tension: 0.2, pointBackgroundColor: '#fff', pointBorderColor: '#4F46E5', borderWidth: 3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } } });
+        }
+        function crearGraficaRadar(d) {
+            const ctx = document.getElementById('chartRadarAnalistas').getContext('2d');
+            chartInstances['radar'] = new Chart(ctx, { type: 'radar', data: { labels: d.ejes, datasets: [{ label: d.nombreAnalista1, data: d.analista1, backgroundColor: 'rgba(59, 130, 246, 0.2)', borderColor: '#3B82F6' }, { label: d.nombreAnalista2, data: d.analista2, backgroundColor: 'rgba(16, 185, 129, 0.2)', borderColor: '#10B981' }] }, options: { responsive: true, maintainAspectRatio: false, scales: { r: { min: 70, max: 100, ticks: { display: false } } }, plugins: { legend: { position: 'bottom' } } } });
+        }
+        function crearGraficaIncertidumbre(d) {
+            const ctx = document.getElementById('chartIncertidumbre').getContext('2d');
+            chartInstances['inc'] = new Chart(ctx, { type: 'doughnut', data: { labels: d.etiquetas, datasets: [{ data: d.porcentajes, backgroundColor: ['#4F46E5', '#3B82F6', '#0EA5E9', '#94A3B8'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right', labels: { usePointStyle: true, font: { size: 10 } } } } } });
+        }
+        function crearGraficaMatrices(d) {
+            const ctx = document.getElementById('chartMatrices').getContext('2d');
+            chartInstances['mat'] = new Chart(ctx, { type: 'bar', data: { labels: d.labels, datasets: [{ label: 'Analista 1', data: d.analista1, backgroundColor: '#3B82F6', borderRadius: 4 }, { label: 'Analista 2', data: d.analista2, backgroundColor: '#34D399', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 90, max: 105 }, x: { grid: { display: false } } } } });
+        }
+        function crearGraficaPrecision(d) {
+            const ctx = document.getElementById('chartPrecision').getContext('2d');
+            chartInstances['prec'] = new Chart(ctx, { type: 'bar', data: { labels: d.niveles, datasets: [{ label: '%CV Repetibilidad', data: d.cvRep, backgroundColor: '#6366F1' }, { label: '%CV Intermedia', data: d.cvInt, backgroundColor: '#8B5CF6' }, { label: 'Horwitz Max', data: d.limiteHorwitz, type: 'line', borderColor: '#EF4444', borderDash: [5, 5] }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { grid: { display: false } } }, plugins: { legend: { position: 'bottom', labels: { usePointStyle: true } } } } });
+        }
+        function crearGraficaRobustez(d) {
+            const ctx = document.getElementById('chartYouden').getContext('2d');
+            
+            // 1. Calculamos la desviación más grande para ajustar la escala dinámicamente
+            const maxVal = Math.max(...d.desviacion.map(Math.abs));
+            // 2. Agregamos un 20% de margen visual (si todo es 0, usamos 1 por defecto)
+            const limiteEje = maxVal > 0 ? maxVal * 1.2 : 1;
+            chartInstances['rob'] = new Chart(ctx, { 
+                type: 'bar', 
+                data: { 
+                    labels: d.factores, 
+                    datasets: [{ 
+                        data: d.desviacion, 
+                        backgroundColor: d.desviacion.map(v => v >= 0 ? '#10B981' : '#F59E0B'), 
+                        borderRadius: 4 
+                    }] 
+                }, 
+                options: { 
+                    indexAxis: 'y', 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { display: false } 
+                    }, 
+                    scales: { 
+                        x: { 
+                            // 3. Aplicamos la escala dinámica y simétrica
+                            min: -limiteEje, 
+                            max: limiteEje,
+                            grid: { color: '#eef2f7' }
+                        }, 
+                        y: { 
+                            grid: { display: false },
+                            ticks: { font: { size: 10 } } // Letra un poco más ajustada para que quepan los 7 factores
+                        } 
+                    } 
+                } 
+            });
+        }
+    </script>
+</body>
+
+</html>

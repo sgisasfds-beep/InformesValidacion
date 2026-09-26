@@ -1,0 +1,146 @@
+<section id="sec-exactitud" class="space-y-6 animate-fade-in">
+    <!-- Encabezado y Controles -->
+    <div class="flex justify-between items-center bg-white p-4 rounded-lg border border-slate-300 shadow-sm">
+        <div>
+            <h2 class="text-xl font-bold text-slate-800">Exactitud, Recuperación Individual y Datos Atípicos</h2>
+            <p class="text-xs text-slate-500">Evaluación del % de Error y % de Recuperación para cada uno de los 10 replicados por analista, Test de Grubbs y Gráfica Metrológica.</p>
+        </div>
+        <div class="flex items-center space-x-4">
+            <select id="selectElementoGlobal" onchange="window.cambiarElementoGlobal(this.value)" class="border border-slate-300 px-4 py-2 rounded font-bold text-blue-700 bg-slate-50 outline-none"></select>
+            <div class="flex space-x-2">
+                <button onclick="window.renderizarExactitud('LCM')" id="tab-exa-LCM" class="px-4 py-2 text-sm font-bold rounded shadow-sm transition btn-tab">LCM</button>
+                <button onclick="window.renderizarExactitud('CCV')" id="tab-exa-CCV" class="px-4 py-2 text-sm font-bold rounded shadow-sm transition btn-tab">CCV</button>
+                <button onclick="window.renderizarExactitud('EA')" id="tab-exa-EA" class="px-4 py-2 text-sm font-bold rounded shadow-sm transition btn-tab">EA</button>
+                <button onclick="window.renderizarMuestrasAdicionadas()" id="tab-exa-MUESTRAS" class="px-4 py-2 text-sm font-bold rounded shadow-sm transition btn-tab bg-teal-50 text-teal-800 border border-teal-200 hover:bg-teal-100">Muestras y Adicionados</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="contenidoExactitud" class="hidden space-y-6">
+        <!-- SECCIÓN 1: Gráfico Visual de Recuperación por Analista -->
+        <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300">
+            <h3 class="font-bold text-slate-800 mb-2 text-base">Gráfico de % Recuperación por Replicado (Analista 1 vs. Analista 2)</h3>
+            <p class="text-xs text-slate-500 mb-4">La línea punteada roja representa el 100% de recuperación teórica ideal.</p>
+            <div class="w-full h-80 relative">
+                <canvas id="chartExactitudRecuperacion"></canvas>
+            </div>
+        </div>
+
+        <!-- SECCIÓN 2: Tabla de las 10 Medidas Individuales (Valor, % Error, % Recuperación) -->
+        <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300 overflow-x-auto">
+            <h3 class="font-bold text-slate-800 mb-3 text-base">Detalle de Medidas Individuales (10 Replicados por Analista)</h3>
+            <table class="w-full text-xs text-center border-collapse border border-slate-300">
+                <thead>
+                    <tr class="bg-slate-100 font-bold text-slate-700">
+                        <th class="border border-slate-300 p-2" rowspan="2">Réplica #</th>
+                        <th class="border border-slate-300 p-2 bg-blue-50 text-blue-900" colspan="3">Analista 1</th>
+                        <th class="border border-slate-300 p-2 bg-indigo-50 text-indigo-900" colspan="3">Analista 2</th>
+                    </tr>
+                    <tr class="bg-slate-100 font-bold text-slate-700">
+                        <th class="border border-slate-300 p-2 bg-blue-50/50">Valor</th>
+                        <th class="border border-slate-300 p-2 bg-blue-50/50">% Error</th>
+                        <th class="border border-slate-300 p-2 bg-blue-50/50">% Recuperación</th>
+                        <th class="border border-slate-300 p-2 bg-indigo-50/50">Valor</th>
+                        <th class="border border-slate-300 p-2 bg-indigo-50/50">% Error</th>
+                        <th class="border border-slate-300 p-2 bg-indigo-50/50">% Recuperación</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaExactitudIndividual" class="divide-y divide-slate-300"></tbody>
+                <tfoot id="tablaExactitudIndividualPromedio" class="bg-slate-100 font-bold border-t-2 border-slate-400"></tfoot>
+            </table>
+        </div>
+
+        <!-- SECCIÓN 3: Test de Grubbs y Estadísticas Finales -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Test de Grubbs -->
+            <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300 overflow-x-auto">
+                <h3 class="font-bold text-slate-800 mb-3 text-base">Evaluación Test de Grubbs (Detección de Atípicos)</h3>
+                <table class="w-full text-xs text-left border-collapse border border-slate-300">
+                    <thead>
+                        <tr class="bg-slate-100 font-bold text-slate-700">
+                            <th class="border border-slate-300 p-2">Parámetro</th>
+                            <th class="border border-slate-300 p-2 text-right">Analista 1</th>
+                            <th class="border border-slate-300 p-2 text-right">Analista 2</th>
+                            <th class="border border-slate-300 p-2 text-right bg-blue-50 text-blue-800">Global</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaGrubbsStats" class="divide-y divide-slate-300"></tbody>
+                </table>
+            </div>
+
+            <!-- Resumen Estadístico de Exactitud -->
+            <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300 overflow-x-auto">
+                <h3 class="font-bold text-slate-800 mb-3 text-base">Métricas Consolidadas de Exactitud</h3>
+                <table class="w-full text-xs text-left border-collapse border border-slate-300">
+                    <thead>
+                        <tr class="bg-slate-100 font-bold text-slate-700">
+                            <th class="border border-slate-300 p-2">Parámetro</th>
+                            <th class="border border-slate-300 p-2 text-right">Analista 1</th>
+                            <th class="border border-slate-300 p-2 text-right">Analista 2</th>
+                            <th class="border border-slate-300 p-2 text-right bg-emerald-50 text-emerald-800">Global</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaExactitudStats" class="divide-y divide-slate-300"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- SECCIÓN 4: Registro de Outliers Eliminados -->
+        <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300">
+            <h3 class="font-bold text-slate-800 mb-3 text-base">Registro de Datos Atípicos Eliminados</h3>
+            <table class="w-full text-sm text-center border-collapse border border-slate-300">
+                <thead>
+                    <tr class="bg-red-50 text-red-800 font-bold border-b border-slate-300">
+                        <th class="border border-slate-300 p-2">Valor Identificado</th>
+                        <th class="border border-slate-300 p-2">Analista</th>
+                        <th class="border border-slate-300 p-2">G Calculado</th>
+                        <th class="border border-slate-300 p-2">G Crítico</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaOutliers" class="divide-y divide-slate-300"></tbody>
+            </table>
+        </div>
+    </div>
+    <!-- SECCIÓN NUEVA: Muestras y Adicionados -->
+    <div id="contenidoMuestras" class="hidden space-y-6 mt-4">
+        
+        <!-- Pestañas de Matrices -->
+        <div class="flex overflow-x-auto space-x-2 border-b border-slate-200 pb-2">
+            <button onclick="window.cambiarMatrizMuestra('agua superficial')" id="tab-matriz-agua-superficial" class="px-4 py-2 text-xs font-bold rounded-t transition border-b-2 border-transparent text-slate-500 hover:text-slate-800">AGUA SUPERFICIAL</button>
+            <button onclick="window.cambiarMatrizMuestra('agua subterranea')" id="tab-matriz-agua-subterranea" class="px-4 py-2 text-xs font-bold rounded-t transition border-b-2 border-transparent text-slate-500 hover:text-slate-800">AGUA SUBTERRÁNEA</button>
+            <button onclick="window.cambiarMatrizMuestra('ar domestica')" id="tab-matriz-ar-domestica" class="px-4 py-2 text-xs font-bold rounded-t transition border-b-2 border-transparent text-slate-500 hover:text-slate-800">AGUA RESIDUAL DOMÉSTICA</button>
+            <button onclick="window.cambiarMatrizMuestra('ar no domestica')" id="tab-matriz-ar-no-domestica" class="px-4 py-2 text-xs font-bold rounded-t transition border-b-2 border-transparent text-slate-500 hover:text-slate-800">AGUA RESIDUAL NO DOMÉSTICA</button>
+        </div>
+
+        <!-- Gráfica Combinada de la Matriz Seleccionada -->
+        <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300">
+            <h3 class="font-bold text-slate-800 mb-2 text-base">Comparativa Analista 1 vs Analista 2 (% Recuperación y RPD)</h3>
+            <p class="text-xs text-slate-500 mb-4">Barras agrupan el % de Recuperación por analista; la línea indica el % RPD.</p>
+            <div class="w-full h-80 relative">
+                <canvas id="chartMuestrasMatrices"></canvas>
+            </div>
+        </div>
+
+        <!-- Tabla de Datos de la Matriz Seleccionada -->
+        <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300 overflow-x-auto">
+            <h3 id="tituloTablaMatriz" class="font-bold text-slate-800 mb-3 text-base">Resultados de Muestras Ambientales</h3>
+            <table class="w-full text-xs text-center border-collapse border border-slate-300">
+                <thead>
+                    <tr class="bg-slate-100 font-bold text-slate-700">
+                        <th class="border border-slate-300 p-2 bg-slate-200">Réplica #</th>
+                        <th class="border border-slate-300 p-2 bg-slate-200">Analista</th>
+                        <th class="border border-slate-300 p-2">Conc. Muestra (Normal)</th>
+                        <th class="border border-slate-300 p-2">Conc. Adicionado</th>
+                        <th class="border border-slate-300 p-2">Conc. Duplicado</th>
+                        <th class="border border-slate-300 p-2 bg-blue-50">% Rec. Adicionado</th>
+                        <th class="border border-slate-300 p-2 bg-indigo-50">% Rec. Duplicado</th>
+                        <th class="border border-slate-300 p-2 bg-amber-50">RPD (%)</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaResultadosMuestras" class="divide-y divide-slate-300">
+                    <!-- Los datos de producción se inyectarán aquí -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>

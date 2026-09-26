@@ -1,0 +1,20 @@
+<section id="sec-robustez" class="max-w-5xl">
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h2 class="text-2xl font-bold text-slate-800 tracking-tight">Análisis de Robustez</h2>
+            <p class="text-sm text-slate-400 mt-1">Evaluación de escenarios y variaciones de factores.</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <span class="text-sm font-semibold text-slate-500">Parámetro:</span>
+            <!-- Asegúrate de reutilizar el mismo formato que tienen tus otros selectores -->
+            <select id="selectElementoGlobal" class="bg-white border border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-[#4361EE] focus:border-[#4361EE] block p-2.5 shadow-sm font-bold" onchange="window.cambiarElementoGlobal(this.value)">
+                <!-- Aquí se inyectarán los options por JS -->
+            </select>
+        </div>
+    </div>
+
+    <!-- Contenedor donde se renderizará dinámicamente la tabla general o el escenario -->
+    <div id="robustez-container" class="bg-white p-6 rounded-2xl shadow-[0_2px_16px_rgba(0,0,0,0.03)] border border-slate-100 min-h-[300px]">
+        <!-- Renderizado inyectado por JS -->
+    </div>
+</section>

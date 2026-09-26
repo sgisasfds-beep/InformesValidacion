@@ -1,0 +1,64 @@
+<section id="sec-precision" class="space-y-6 animate-fade-in">
+    <div class="flex justify-between items-center bg-white p-4 rounded-lg border border-slate-300 shadow-sm">
+        <div>
+            <h2 class="text-xl font-bold text-slate-800">Evaluación de la Precisión</h2>
+            <p class="text-xs text-slate-500">ANOVA y Análisis No Paramétrico para evaluar la variabilidad.</p>
+        </div>
+        <div class="flex items-center space-x-4">
+            <select id="selectElementoGlobal" onchange="window.cambiarElementoGlobal(this.value)" class="border border-slate-300 px-4 py-2 rounded font-bold text-blue-700 bg-slate-50 outline-none"></select>
+            <div class="flex space-x-2">
+                <button onclick="window.renderizarPrecision('lcm')" id="tab-prec-lcm" class="px-4 py-2 text-sm font-bold rounded shadow-sm transition btn-tab">LCM</button>
+                <button onclick="window.renderizarPrecision('ccv')" id="tab-prec-ccv" class="px-4 py-2 text-sm font-bold rounded shadow-sm transition btn-tab">CCV</button>
+                <button onclick="window.renderizarPrecision('ea')" id="tab-prec-ea" class="px-4 py-2 text-sm font-bold rounded shadow-sm transition btn-tab">EA</button>
+            </div>
+        </div>
+    </div>
+
+    
+    <div id="contenidoPrecision" class="hidden grid grid-cols-2 gap-6 items-start">
+        <div class="space-y-6 w-full">
+            <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300">
+                <h3 class="font-bold text-slate-800 mb-3 text-base">Pruebas de Normalidad</h3>
+                <table class="w-full text-sm text-center border-collapse border border-slate-300">
+                    <thead>
+                        <tr class="bg-slate-100 font-bold text-slate-700 border-b border-slate-300">
+                            <th class="border border-slate-300 p-2 text-left">Prueba / Estadística</th>
+                            <th class="border border-slate-300 p-2 italic font-normal">Analista 1</th>
+                            <th class="border border-slate-300 p-2 italic font-normal">Analista 2</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaNormalidad"></tbody>
+                </table>
+            </div>
+
+            <!-- Alternativa No parametrica -->
+            <div id="cardNoParametrica" class="bg-white p-5 rounded-lg shadow-sm border border-slate-300 hidden">
+                <h3 class="font-bold text-slate-800 mb-3 text-base">Alternativa No Paramétrica (Kruskal-Wallis)</h3>
+                <p class="text-xs text-slate-500 mb-3">Activado por fallo de normalidad en Analista 1 o Analista 2. Utilice este test para comparar medianas.</p>
+                <table class="w-full text-sm text-center border-collapse border border-slate-300">
+                    <tbody id="tablaNoParametrica"></tbody>
+                </table>
+            </div>
+
+            <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300">
+                <h3 class="font-bold text-slate-800 mb-3 text-base">Análisis de Varianza de Dos Factores (ANOVA)</h3>
+                <table class="w-full text-sm text-center border-collapse border border-slate-300">
+                    <thead>
+                        <tr class="bg-slate-100 font-bold text-slate-700 border-b border-slate-300">
+                            <th class="border border-slate-300 p-2">Fuente</th>
+                            <th class="border border-slate-300 p-2">F</th>
+                            <th class="border border-slate-300 p-2">Valor p</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaANOVA"></tbody>
+                </table>
+            </div>
+        </div>
+
+        
+        <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300 w-full sticky top-6">
+            <h3 class="font-bold mb-3 text-slate-800 text-base">Perfil de Precisión: Interacción Analista vs Réplica</h3>
+            <div class="relative h-[450px] w-full"><canvas id="chartPrecision"></canvas></div>
+        </div>
+    </div>
+</section>

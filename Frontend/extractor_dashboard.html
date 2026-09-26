@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analizador Inteligente de Validaciones LIMS</title>
+    <script src="tailwindcss.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+        
+        .fade-in { animation: fadeIn 0.5s ease-in-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .pulse-border { animation: pulseBorder 2s infinite; }
+        @keyframes pulseBorder { 
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); } 
+            70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); } 
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); } 
+        }
+
+        .upload-zone.dragover { background-color: #EFF6FF; border-color: #3B82F6; }
+
+        /* Estilos para las tablas */
+        .tabla-datos th { background-color: #f8fafc; color: #64748b; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; padding: 1rem; border-bottom: 1px solid #e2e8f0; }
+        .tabla-datos td { padding: 1rem; border-bottom: 1px solid #f1f5f9; color: #334155; font-size: 0.875rem; }
+        .tabla-datos tr:last-child td { border-bottom: none; }
+        .tabla-datos tr:hover td { background-color: #f8fafc; }
+    </style>
+</head>
+<body class="text-slate-700 h-screen flex overflow-hidden">
+
+    <!-- Sidebar Lateral -->
+    <aside class="w-64 bg-white shadow-lg flex flex-col justify-between z-20 flex-shrink-0">
+        <div class="p-6">
+            <div class="flex items-center gap-3 mb-10 mt-2">
+                <div class="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/30">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                </div>
+                <h1 class="text-xl font-bold text-slate-800 tracking-tight">AI Validator</h1>
+            </div>
+            <nav class="space-y-2">
+                <button class="w-full text-left px-4 py-3 rounded-xl bg-blue-50 text-blue-700 font-semibold transition-all flex items-center gap-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg> Extracción PDF
+                </button>
+                <button class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-500 font-medium transition-all flex items-center gap-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg> Histórico
+                </button>
+            </nav>
+        </div>
+    </aside>
+
+    <main class="flex-1 relative overflow-y-auto w-full">
+        <!-- VISTA 1: UPLOAD ZONE -->
+        <div id="view-upload" class="absolute inset-0 flex flex-col items-center justify-center p-8 transition-opacity duration-500 z-10 bg-slate-50">
+            <div class="text-center mb-8 max-w-lg fade-in">
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">Extracción Inteligente de Informes</h2>
+                <p class="text-slate-500">Sube tu informe de validación en formato PDF. Nuestro sistema extraerá los datos y generará un dashboard interactivo al instante.</p>
+            </div>
+            <div id="dropzone" class="upload-zone w-full max-w-2xl bg-white border-2 border-dashed border-slate-300 rounded-3xl p-12 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50/50 transition-all duration-300 glass-card fade-in" style="animation-delay: 0.1s;">
+                <input type="file" id="file-input" class="hidden" accept=".pdf" />
+                <div class="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 pulse-border">
+                    <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                </div>
+                <h3 class="text-xl font-semibold text-slate-700 mb-2">Arrastra tu archivo PDF aquí</h3>
+                <p class="text-sm text-slate-400 mb-6">o haz clic para explorar en tu equipo</p>
+                <button class="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/30">Seleccionar Archivo</button>
+            </div>
+        </div>
+
+        <!-- VISTA 2: LOADING -->
+        <div id="view-loading" class="absolute inset-0 flex flex-col items-center justify-center p-8 bg-slate-50 z-10 hidden opacity-0 transition-opacity duration-500">
+            <div class="w-full max-w-md bg-white p-8 rounded-3xl shadow-xl border border-slate-100 text-center">
+                <div class="inline-block relative w-20 h-20 mb-6">
+                    <svg class="animate-spin text-blue-600 w-full h-full" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <div class="absolute inset-0 flex items-center justify-center text-xs font-bold text-blue-800" id="progress-text">0%</div>
+                </div>
+                <h3 class="text-lg font-bold text-slate-800 mb-2">Analizando Documento...</h3>
+                <p id="loading-status" class="text-sm text-slate-500 mb-6">Leyendo tablas del PDF...</p>
+                <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div id="progress-bar" class="bg-gradient-to-r from-blue-500 to-indigo-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VISTA 3: DASHBOARD PROFESIONAL -->
+        <div id="view-dashboard" class="hidden opacity-0 transition-opacity duration-700 p-8 z-0">
+            <div class="max-w-7xl mx-auto space-y-6">
+                
+                <!-- Header -->
+                <header class="flex justify-between items-end bg-white p-6 rounded-2xl shadow-sm border border-slate-200 fade-in" style="animation-delay: 0.1s;">
+                    <div class="flex items-start gap-5">
+                        <div class="p-3 bg-blue-50 rounded-xl">
+                            <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-3 mb-1">
+                                <span class="px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-full tracking-wide uppercase shadow-sm">Validación Conforme</span>
+                            </div>
+                            <h2 id="doc-titulo" class="text-2xl font-bold text-slate-800">Informe: Estaño (Sn) en Aguas</h2>
+                            <p id="doc-subtitulo" class="text-sm text-slate-500 mt-1">Procedimiento PO-AM-012 | Espectrometría ICP-OES</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <button onclick="window.location.reload()" class="px-4 py-2 bg-white border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> Cargar Otro
+                        </button>
+                    </div>
+                </header>
+
+                <!-- KPIs -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 fade-in" style="animation-delay: 0.2s;">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100"><h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Límites Analíticos</h3><div class="flex items-baseline gap-2"><p id="kpi-lod" class="text-2xl font-black text-slate-800">0.0051</p><p class="text-xs font-semibold text-slate-500">LOD</p></div><div class="flex items-center gap-2 mt-2 text-xs"><span id="kpi-loq" class="text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded">LOQ: 0.017</span><span class="text-slate-400">mg/L</span></div></div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100"><h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Error Global LCM</h3><div class="flex items-baseline gap-2"><p id="kpi-error-lcm" class="text-2xl font-black text-emerald-600">2.7%</p></div><p class="text-[10px] text-slate-500 mt-2 leading-tight">Cumple tolerancia normativa (≤ 35%).</p></div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100"><h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">R²</h3><p id="kpi-r2" class="text-2xl font-black text-indigo-600">0.9997</p><p id="kpi-sensibilidad" class="text-[10px] text-slate-500 mt-2">Sensibilidad: 154,723</p></div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100"><h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Incertidumbre</h3><p id="kpi-uexp" class="text-2xl font-black text-rose-500">± 3.78%</p><p id="kpi-uexp-abs" class="text-[10px] text-slate-500 mt-2">± 0.01890 mg/L (Nivel Medio)</p></div>
+                    <div class="bg-gradient-to-br from-blue-600 to-indigo-700 p-5 rounded-2xl shadow-sm text-white"><h3 class="text-[10px] font-bold text-blue-200 uppercase tracking-wider mb-1">Índice Robustez IA</h3><p id="kpi-robustez" class="text-2xl font-black">98.5/100</p><p class="text-[10px] text-blue-100 mt-2">Test Youden Conforme</p></div>
+                </div>
+
+                <!-- GRÁFICAS FILA 1 -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 fade-in" style="animation-delay: 0.3s;">
+                    <!-- Linealidad -->
+                    <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative group">
+                        <div class="flex justify-between items-start mb-6">
+                            <div>
+                                <h3 class="text-base font-bold text-slate-800">Modelado de Linealidad y Rango</h3>
+                                <p class="text-xs text-slate-500">Curva de calibración instrumental</p>
+                            </div>
+                            <button onclick="abrirModal('linealidad')" class="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 transition-colors flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                Ver Datos Tabulares
+                            </button>
+                        </div>
+                        <div class="relative h-72 w-full"><canvas id="chartLinealidad"></canvas></div>
+                    </div>
+
+                    <!-- Precisión (Radar reemplazado u organizado) -->
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="text-base font-bold text-slate-800">Desempeño Inter-Analista</h3>
+                                <p class="text-xs text-slate-500">Comparativa de competencias</p>
+                            </div>
+                            <button onclick="abrirModal('analistas')" class="p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-slate-500 transition-colors" title="Ver Datos">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            </button>
+                        </div>
+                        <div class="relative h-64 w-full flex items-center justify-center"><canvas id="chartRadarAnalistas"></canvas></div>
+                    </div>
+                </div>
+
+                <!-- GRÁFICAS FILA 2 -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 fade-in" style="animation-delay: 0.4s;">
+                    <!-- Incertidumbre -->
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div class="flex justify-between items-start mb-1">
+                            <h3 class="text-base font-bold text-slate-800">Presupuesto Incertidumbre</h3>
+                            <button onclick="abrirModal('incertidumbre')" class="p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-slate-500 transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg></button>
+                        </div>
+                        <p class="text-xs text-slate-500 mb-6">Distribución porcentual de los aportes</p>
+                        <div class="relative h-56 w-full"><canvas id="chartIncertidumbre"></canvas></div>
+                    </div>
+
+                    <!-- Recuperación por Matriz -->
+                    <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="text-base font-bold text-slate-800">Recuperación por Matriz</h3>
+                                <p class="text-xs text-slate-500">Evaluación de veracidad en muestras reales</p>
+                            </div>
+                            <button onclick="abrirModal('matrices')" class="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 transition-colors flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg> Tablas de Veracidad
+                            </button>
+                        </div>
+                        <div class="relative h-56 w-full"><canvas id="chartMatrices"></canvas></div>
+                    </div>
+                </div>
+
+                <!-- GRÁFICAS FILA 3 (Precisión vs Horwitz y Robustez) -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 fade-in" style="animation-delay: 0.5s;">
+                    <!-- Precisión -->
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="text-base font-bold text-slate-800">Evaluación de Precisión (%CV)</h3>
+                                <p class="text-xs text-slate-500">Frente al criterio de Horwitz</p>
+                            </div>
+                            <button onclick="abrirModal('precision')" class="p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-slate-500 transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg></button>
+                        </div>
+                        <div class="relative h-64 w-full"><canvas id="chartPrecision"></canvas></div>
+                    </div>
+
+                    <!-- Robustez -->
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="text-base font-bold text-slate-800">Test de Robustez (Youden)</h3>
+                                <p class="text-xs text-slate-500">Sensibilidad a fluctuaciones del proceso</p>
+                            </div>
+                            <button onclick="abrirModal('robustez')" class="p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-slate-500 transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg></button>
+                        </div>
+                        <div class="relative h-64 w-full"><canvas id="chartYouden"></canvas></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- SISTEMA DE MODAL (TARJETA FLOTANTE GLASSMORPHISM) -->
+    <div id="modal-container" class="fixed inset-0 z-50 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300 bg-slate-900/60 backdrop-blur-sm p-4">
+        
+        <div id="modal-card" class="bg-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300 flex flex-col max-h-[85vh]">
+            <!-- Modal Header -->
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-blue-100 text-blue-600 rounded-lg">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    </div>
+                    <div>
+                        <h3 id="modal-titulo" class="text-lg font-bold text-slate-800">Título de la Tabla</h3>
+                        <p id="modal-subtitulo" class="text-xs text-slate-500">Datos extraídos directamente del informe PDF</p>
+                    </div>
+                </div>
+                <button onclick="cerrarModal()" class="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <!-- Modal Body (Contenedor de la Tabla Dinámica) -->
+            <div class="p-6 overflow-y-auto w-full">
+                <div class="border border-slate-200 rounded-xl overflow-hidden">
+                    <table class="w-full text-left border-collapse tabla-datos">
+                        <thead id="modal-thead">
+                            <!-- Headers inyectados vía JS -->
+                        </thead>
+                        <tbody id="modal-tbody">
+                            <!-- Filas inyectadas vía JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-4 flex justify-end">
+                    <button class="px-4 py-2 bg-slate-100 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Descargar CSV
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let chartInstances = {};
+
+        // Variables Globales de UI
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('file-input');
+        const viewUpload = document.getElementById('view-upload');
+        const viewLoading = document.getElementById('view-loading');
+        const viewDashboard = document.getElementById('view-dashboard');
+        
+        // Objeto global con todos los datos simulados extraídos del PDF (incluyendo tablas)
+        const datosExtraidos = {
+            kpis: { lod: "0.0051", loq: "0.0170", r2: "0.9997" },
+            // Datos para gráficas y tablas
+            linealidad: {
+                concentraciones: ['0.05', '0.10', '0.40', '0.70', '1.00'],
+                senales: [18930, 26667, 70802, 119744, 165600],
+                // Datos puros para la tabla
+                tabla: [
+                    { nivel: 1, teórica: 0.05, instrumental: 18930, calculada: 0.053, sesgo: "+6.0%" },
+                    { nivel: 2, teórica: 0.10, instrumental: 26667, calculada: 0.103, sesgo: "+3.0%" },
+                    { nivel: 3, teórica: 0.40, instrumental: 70802, calculada: 0.388, sesgo: "-3.0%" },
+                    { nivel: 4, teórica: 0.70, instrumental: 119744, calculada: 0.704, sesgo: "+0.6%" },
+                    { nivel: 5, teórica: 1.00, instrumental: 165600, calculada: 1.001, sesgo: "+0.1%" }
+                ]
+            },
+            analistas: {
+                // Datos para gráfica radar
+                analista1: [95, 88, 92, 96, 90],
+                analista2: [93, 91, 95, 94, 89],
+                // Datos para la tabla
+                tabla: [
+                    { parametro: "Recuperación Promedio (%)", an1: "98.4 ± 1.2", an2: "99.1 ± 1.5", dif: "0.7%", zscore: "0.45 (Satisfactorio)" },
+                    { parametro: "Precisión Intermedia (%CV)", an1: "2.1%", an2: "2.4%", dif: "0.3%", zscore: "N/A" },
+                    { parametro: "Manejo de Blancos (mg/L)", an1: "< 0.005", an2: "< 0.005", dif: "0", zscore: "N/A" }
+                ]
+            },
+            incertidumbre: {
+                etiquetas: ['Repetibilidad', 'Curva Calib.', 'Prep. Patrón', 'Volumetría'],
+                porcentajes: [58.3, 37.2, 3.1, 1.4],
+                tabla: [
+                    { fuente: "Repetibilidad del Método", u_est: "0.0076", coef_sens: "1.0", u_pond: "0.0076", aporte: "58.3%" },
+                    { fuente: "Curva de Calibración (Inversa)", u_est: "0.0061", coef_sens: "1.0", u_pond: "0.0061", aporte: "37.2%" },
+                    { fuente: "Preparación Patrón Stock", u_est: "0.0017", coef_sens: "1.0", u_pond: "0.0017", aporte: "3.1%" },
+                    { fuente: "Material Volumétrico (Matraces)", u_est: "0.0011", coef_sens: "1.0", u_pond: "0.0011", aporte: "1.4%" }
+                ]
+            },
+            matrices: {
+                labels: ['Agua Superficial', 'Agua Subterránea', 'Residual Doméstica'],
+                analista1: [98.4, 101.2, 97.5],
+                analista2: [99.1, 100.5, 98.2],
+                tabla: [
+                    { matriz: "Agua Superficial", spike: "0.50 mg/L", rec1: "98.4%", rec2: "99.1%", prom: "98.7%", criterio: "80 - 120%" },
+                    { matriz: "Agua Subterránea", spike: "0.50 mg/L", rec1: "101.2%", rec2: "100.5%", prom: "100.8%", criterio: "80 - 120%" },
+                    { matriz: "Residual Doméstica", spike: "0.50 mg/L", rec1: "97.5%", rec2: "98.2%", prom: "97.8%", criterio: "80 - 120%" }
+                ]
+            },
+            precision: {
+                niveles: ['Bajo (0.05)', 'Medio (0.50)', 'Alto (0.90)'],
+                cvRep: [3.1, 1.8, 1.2],
+                cvInt: [4.2, 2.4, 1.7],
+                limiteHorwitz: [8.0, 6.0, 5.0],
+                tabla: [
+                    { nivel: "Bajo (0.05 mg/L)", cv_rep: "3.1%", cv_int: "4.2%", max_horwitz: "8.0%", limite_interno: "≤ 5.0%", estado: "Cumple" },
+                    { nivel: "Medio (0.50 mg/L)", cv_rep: "1.8%", cv_int: "2.4%", max_horwitz: "6.0%", limite_interno: "≤ 5.0%", estado: "Cumple" },
+                    { nivel: "Alto (0.90 mg/L)", cv_rep: "1.2%", cv_int: "1.7%", max_horwitz: "5.0%", limite_interno: "≤ 5.0%", estado: "Cumple" }
+                ]
+            },
+            robustez: {
+                factores: ['Temp. Digestión', 'Tiempo Reacción', 'Flujo Gas Plasma', 'Volumen Ácido'],
+                desviacion: [0.8, -1.2, 0.4, -0.6],
+                tabla: [
+                    { factor: "Temperatura Digestión", nominal: "95 °C", variacion: "± 5 °C", efecto: "+ 0.8%", sign: "No Significativo" },
+                    { factor: "Tiempo de Reacción", nominal: "120 min", variacion: "± 10 min", efecto: "- 1.2%", sign: "No Significativo" },
+                    { factor: "Flujo Gas Plasma", nominal: "15 L/min", variacion: "± 0.1 L/min", efecto: "+ 0.4%", sign: "No Significativo" },
+                    { factor: "Volumen de Ácido HNO3", nominal: "5.0 mL", variacion: "± 0.2 mL", efecto: "- 0.6%", sign: "No Significativo" }
+                ]
+            }
+        };
+
+        // Eventos Drag & Drop...
+        dropzone.addEventListener('click', () => fileInput.click());
+        dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+        dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+        dropzone.addEventListener('drop', (e) => { e.preventDefault(); iniciarProcesamiento(); });
+        fileInput.addEventListener('change', () => { if(fileInput.files.length > 0) iniciarProcesamiento(); });
+
+        function iniciarProcesamiento() {
+            viewUpload.style.opacity = '0';
+            setTimeout(() => {
+                viewUpload.classList.add('hidden');
+                viewLoading.classList.remove('hidden');
+                setTimeout(() => viewLoading.style.opacity = '1', 50);
+                
+                let p = 0; const bar = document.getElementById('progress-bar'); const txt = document.getElementById('progress-text');
+                const int = setInterval(() => {
+                    p += Math.floor(Math.random() * 15) + 5; if(p > 100) p = 100;
+                    bar.style.width = p + '%'; txt.innerText = p + '%';
+                    if(p === 100) { clearInterval(int); setTimeout(renderDashboard, 600); }
+                }, 150);
+            }, 500);
+        }
+
+        function renderDashboard() {
+            viewLoading.style.opacity = '0';
+            setTimeout(() => {
+                viewLoading.classList.add('hidden');
+                viewDashboard.classList.remove('hidden');
+                setTimeout(() => {
+                    viewDashboard.style.opacity = '1';
+                    Chart.defaults.font.family = "'Inter', sans-serif";
+                    Chart.defaults.color = '#94a3b8';
+
+                    // Generar gráficas
+                    crearGraficaLinealidad();
+                    crearGraficaRadar();
+                    crearGraficaIncertidumbre();
+                    crearGraficaMatrices();
+                    crearGraficaPrecision();
+                    crearGraficaRobustez();
+                }, 50);
+            }, 500);
+        }
+
+        // --- SISTEMA DE MODAL (TABLAS) ---
+        const modalContainer = document.getElementById('modal-container');
+        const modalCard = document.getElementById('modal-card');
+        const modalTitulo = document.getElementById('modal-titulo');
+        const tHead = document.getElementById('modal-thead');
+        const tBody = document.getElementById('modal-tbody');
+
+        const configTablas = {
+            'linealidad': {
+                titulo: "Datos de Calibración (Linealidad)",
+                headers: ["Nivel", "Conc. Teórica (mg/L)", "Señal (cps)", "Conc. Calculada", "Sesgo %"],
+                keys: ["nivel", "teórica", "instrumental", "calculada", "sesgo"]
+            },
+            'analistas': {
+                titulo: "Comparativa de Desempeño Inter-Analista",
+                headers: ["Parámetro Evaluado", "Analista 1", "Analista 2", "Diferencia Absoluta", "Z-Score"],
+                keys: ["parametro", "an1", "an2", "dif", "zscore"]
+            },
+            'incertidumbre': {
+                titulo: "Presupuesto de Incertidumbre",
+                headers: ["Fuente de Incertidumbre", "Incertidumbre Est. (u)", "Coef. Sensibilidad (c)", "Aporte Ponderado", "Contribución %"],
+                keys: ["fuente", "u_est", "coef_sens", "u_pond", "aporte"]
+            },
+            'matrices': {
+                titulo: "Recuperación por Matriz (Veracidad)",
+                headers: ["Tipo de Matriz", "Concentración Adicionada", "Recup. Analista 1", "Recup. Analista 2", "Promedio", "Criterio Aceptación"],
+                keys: ["matriz", "spike", "rec1", "rec2", "prom", "criterio"]
+            },
+            'precision': {
+                titulo: "Resultados de Precisión y Límite Horwitz",
+                headers: ["Nivel de Concentración", "%CV Repetibilidad", "%CV Intermedia", "Máximo Horwitz Permitido", "Límite Interno", "Dictamen"],
+                keys: ["nivel", "cv_rep", "cv_int", "max_horwitz", "limite_interno", "estado"]
+            },
+            'robustez': {
+                titulo: "Test de Robustez (Factores de Youden)",
+                headers: ["Factor Evaluado", "Condición Nominal", "Variación Introducida", "Efecto en %Recup.", "Significancia (t-test)"],
+                keys: ["factor", "nominal", "variacion", "efecto", "sign"]
+            }
+        };
+
+        function abrirModal(idContexto) {
+            const config = configTablas[idContexto];
+            const dataRow = datosExtraidos[idContexto].tabla;
+
+            modalTitulo.innerText = config.titulo;
+            
+            // Render Headers
+            tHead.innerHTML = `<tr>${config.headers.map(h => `<th class="whitespace-nowrap">${h}</th>`).join('')}</tr>`;
+            
+            // Render Rows
+            tBody.innerHTML = dataRow.map(row => {
+                return `<tr>${config.keys.map(key => {
+                    // Dar estilo verde al texto "Cumple" o "No Significativo" para mejor visualización
+                    let cellVal = row[key];
+                    let tdClass = "";
+                    if(cellVal === "Cumple" || cellVal === "No Significativo") tdClass = "font-bold text-emerald-600";
+                    return `<td class="${tdClass}">${cellVal}</td>`;
+                }).join('')}</tr>`;
+            }).join('');
+
+            // Mostrar Modal con animación
+            modalContainer.classList.remove('pointer-events-none', 'opacity-0');
+            modalContainer.classList.add('opacity-100');
+            setTimeout(() => modalCard.classList.remove('scale-95'), 10);
+        }
+
+        function cerrarModal() {
+            modalCard.classList.add('scale-95');
+            modalContainer.classList.remove('opacity-100');
+            modalContainer.classList.add('opacity-0');
+            setTimeout(() => modalContainer.classList.add('pointer-events-none'), 300);
+        }
+
+        // Cerrar modal al hacer clic afuera
+        modalContainer.addEventListener('click', (e) => {
+            if (e.target === modalContainer) cerrarModal();
+        });
+
+
+        // --- FUNCIONES DE GRÁFICAS (Mantenidas idénticas al paso anterior) ---
+        function crearGraficaLinealidad() {
+            const ctx = document.getElementById('chartLinealidad').getContext('2d');
+            let grad = ctx.createLinearGradient(0, 0, 0, 300);
+            grad.addColorStop(0, 'rgba(79, 70, 229, 0.2)'); grad.addColorStop(1, 'rgba(79, 70, 229, 0)');
+            chartInstances['lin'] = new Chart(ctx, { type: 'line', data: { labels: datosExtraidos.linealidad.concentraciones, datasets: [{ data: datosExtraidos.linealidad.senales, borderColor: '#4F46E5', backgroundColor: grad, fill: true, tension: 0.2, pointBackgroundColor: '#fff', pointBorderColor: '#4F46E5', borderWidth: 3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } } });
+        }
+        function crearGraficaRadar() {
+            const ctx = document.getElementById('chartRadarAnalistas').getContext('2d');
+            chartInstances['radar'] = new Chart(ctx, { type: 'radar', data: { labels: ['Recuperación', 'Precisión (CV)', 'Reproducibilidad', 'Robustez', 'Manejo Blanco'], datasets: [ { label: 'Analista 1', data: datosExtraidos.analistas.analista1, backgroundColor: 'rgba(59, 130, 246, 0.2)', borderColor: '#3B82F6' }, { label: 'Analista 2', data: datosExtraidos.analistas.analista2, backgroundColor: 'rgba(16, 185, 129, 0.2)', borderColor: '#10B981' } ] }, options: { responsive: true, maintainAspectRatio: false, scales: { r: { min: 70, max: 100, ticks: { display: false } } }, plugins: { legend: { position: 'bottom' } } } });
+        }
+        function crearGraficaIncertidumbre() {
+            const ctx = document.getElementById('chartIncertidumbre').getContext('2d');
+            chartInstances['inc'] = new Chart(ctx, { type: 'doughnut', data: { labels: datosExtraidos.incertidumbre.etiquetas, datasets: [{ data: datosExtraidos.incertidumbre.porcentajes, backgroundColor: ['#4F46E5', '#3B82F6', '#0EA5E9', '#94A3B8'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right', labels: { usePointStyle: true, font: {size: 10} } } } } });
+        }
+        function crearGraficaMatrices() {
+            const ctx = document.getElementById('chartMatrices').getContext('2d');
+            chartInstances['mat'] = new Chart(ctx, { type: 'bar', data: { labels: datosExtraidos.matrices.labels, datasets: [ { label: 'Analista 1', data: datosExtraidos.matrices.analista1, backgroundColor: '#3B82F6', borderRadius: 4 }, { label: 'Analista 2', data: datosExtraidos.matrices.analista2, backgroundColor: '#34D399', borderRadius: 4 } ] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 90, max: 105 }, x: { grid: { display: false } } } } });
+        }
+        function crearGraficaPrecision() {
+            const ctx = document.getElementById('chartPrecision').getContext('2d');
+            chartInstances['prec'] = new Chart(ctx, { type: 'bar', data: { labels: datosExtraidos.precision.niveles, datasets: [ { label: '%CV Repetibilidad', data: datosExtraidos.precision.cvRep, backgroundColor: '#6366F1' }, { label: '%CV Intermedia', data: datosExtraidos.precision.cvInt, backgroundColor: '#8B5CF6' }, { label: 'Horwitz Max', data: datosExtraidos.precision.limiteHorwitz, type: 'line', borderColor: '#EF4444', borderDashes: [5, 5] } ] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { grid: { display: false } } }, plugins: { legend: { position: 'bottom', labels: { usePointStyle: true } } } } });
+        }
+        function crearGraficaRobustez() {
+            const ctx = document.getElementById('chartYouden').getContext('2d');
+            chartInstances['rob'] = new Chart(ctx, { type: 'bar', data: { labels: datosExtraidos.robustez.factores, datasets: [{ data: datosExtraidos.robustez.desviacion, backgroundColor: datosExtraidos.robustez.desviacion.map(v => v >= 0 ? '#10B981' : '#F59E0B'), borderRadius: 4 }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { min: -3, max: 3 }, y: { grid: { display: false } } } } });
+        }
+    </script>
+</body>
+</html>

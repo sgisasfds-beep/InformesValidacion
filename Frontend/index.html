@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validación de Métodos Analíticos</title>
+    <script src="tailwindcss.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            // Si no hay datos globales procesados, forzar la sección de carga (Paso 1)
+            if (!localStorage.getItem('datosGlobales') && typeof window.cambiarSeccion === 'function') {
+                window.cambiarSeccion('carga');
+            }
+        });
+    </script>
+    <script>
+        // Recuperar el usuario autenticado desde el almacenamiento local
+        const sesionGuardada = localStorage.getItem('usuarioActual');
+
+        if (sesionGuardada) {
+            window.usuarioActual = JSON.parse(sesionGuardada);
+            console.log("Sesión iniciada con rol:", window.usuarioActual.rol);
+        } else {
+            // Valor por defecto para pruebas directas si no se pasa por el login
+            window.usuarioActual = {
+                nombre: "Analista de Prueba",
+                rol: "fisicoquimico",
+                area: "fisicoquimico"
+            };
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+
+<body class="bg-[#F3F6FD] text-slate-600 antialiased selection:bg-blue-100 selection:text-blue-900">
+
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar imitando el panel izquierdo de la imagen -->
+        <aside
+            class="w-64 bg-white shadow-[4px_0_24px_rgba(0,0,0,0.02)] flex flex-col justify-between z-10 border-r border-slate-100">
+            <div class="p-6">
+                <!-- Logo Header -->
+                <div class="flex items-center gap-3 mb-10 mt-2">
+                    <div class="w-4 h-4 bg-[#4361EE] rounded-sm"></div>
+                    <h1 class="text-xl font-bold text-slate-800 tracking-tight">LIMS SGI</h1>
+                </div>
+
+                <nav class="space-y-1">
+                    <button onclick="window.location.href='visualizador.html'" id="btn-visualizacion"
+                        class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-500 font-medium transition-all flex items-center gap-3">
+                        <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Visualizacion de Validaciones
+                    </button>
+                    <button onclick="window.cambiarSeccion('carga')" id="btn-carga"
+                        class="w-full text-left px-4 py-3 rounded-xl bg-[#F3F6FD] text-[#4361EE] font-semibold transition-all flex items-center gap-3">
+                        <span class="w-1.5 h-1.5 rounded-full bg-[#4361EE]"></span> Carga de Datos
+                    </button>
+                    <button onclick="window.cambiarSeccion('limites')" id="btn-limites"
+                        class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-500 font-medium transition-all flex items-center gap-3">
+                        <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Límites Det./Cuant.
+                    </button>
+                    <button onclick="window.cambiarSeccion('precision')" id="btn-precision"
+                        class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-500 font-medium transition-all flex items-center gap-3">
+                        <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Precisión
+                    </button>
+                    <button onclick="window.cambiarSeccion('estandarizacion')" id="btn-estandarizacion"
+                        class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-500 font-medium transition-all flex items-center gap-3">
+                        <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Estandarización
+                    </button>
+                    <button onclick="window.cambiarSeccion('exactitud')" id="btn-exactitud"
+                        class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-500 font-medium transition-all flex items-center gap-3">
+                        <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Exactitud
+                    </button>
+                    <button onclick="window.cambiarSeccion('rango-trabajo')" id="btn-rango-trabajo"
+                        class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-500 font-medium transition-all flex items-center gap-3">
+                        <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Rango de Trabajo
+                    </button>
+                    <button onclick="window.cambiarSeccion('robustez')" id="btn-robustez"
+                        class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-500 font-medium transition-all flex items-center gap-3">
+                        <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Robustez
+                    </button>
+                    <button onclick="window.cambiarSeccion('linealidad')" id="btn-linealidad"
+                        class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-500 font-medium transition-all flex items-center gap-3">
+                        <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Linealidad
+                    </button>
+                    <button onclick="window.cambiarSeccion('incertidumbre')" id="btn-incertidumbre"
+                        class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-500 font-medium transition-all flex items-center gap-3">
+                        <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Incertidumbre
+                    </button>
+                    <button onclick="window.cambiarSeccion('informe')" id="btn-informe"
+                        class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-500 font-medium transition-all flex items-center gap-3">
+                        <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Generar Informe
+                    </button>
+                </nav>
+            </div>
+
+            <div
+                class="p-6 border-t border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
+                Fisicoquímica & Metrología
+            </div>
+        </aside>
+
+        <main id="main-content" class="flex-1 overflow-y-auto p-10 relative z-0">
+            <!-- El contenido de carga.html se inyecta aquí -->
+        </main>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="js/core-estado.js"></script>
+    <script src="js/core-navegacion.js"></script>
+    <script src="js/seccion-limites.js"></script>
+    <script src="js/seccion-precision.js"></script>
+    <script src="js/seccion-exactitud.js"></script>
+    <script src="js/seccion-rango-trabajo.js"></script>
+    <script src="js/seccion-estandarizacion.js"></script>
+    <script src="js/seccion-linealidad.js"></script>
+    <script src="js/seccion-robustez.js"></script>
+    <script src="js/seccion-incertidumbre.js"></script>
+    <script src="js/informe-datos.js"></script>
+    <script src="js/informe-pdf.js"></script>
+</body>
+
+</html>

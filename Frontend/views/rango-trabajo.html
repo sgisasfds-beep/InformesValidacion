@@ -1,0 +1,95 @@
+<section id="sec-rango-trabajo" class="space-y-6 animate-fade-in">
+    <!-- Encabezado y Selector de Elemento -->
+    <div class="flex justify-between items-center bg-white p-4 rounded-lg border border-slate-300 shadow-sm">
+        <div>
+            <h2 class="text-xl font-bold text-slate-800">Evaluación de Rango de Trabajo (RT)</h2>
+            <p class="text-xs text-slate-500">Ajuste de factores de dilución, exactitud, métricas de error y Test de Grubbs por analista.</p>
+        </div>
+        <div class="flex items-center space-x-3">
+            <label for="selectElementoRT" class="font-semibold text-sm text-slate-700">Parámetro / Elemento:</label>
+            <select id="selectElementoRT" onchange="window.renderizarRangoTrabajo(this.value)" class="border border-slate-300 px-4 py-2 rounded font-bold text-blue-700 bg-slate-50 outline-none cursor-pointer shadow-sm">
+            </select>
+        </div>
+    </div>
+
+    <div id="contenidoRT" class="space-y-6 hidden">
+        <!-- Resumen de Tarjetas Estadísticas por Analista -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Analista 1 -->
+            <div class="bg-white p-5 rounded-lg border border-slate-300 shadow-sm space-y-3">
+                <div class="flex justify-between items-center border-b pb-2">
+                    <h3 class="font-bold text-slate-800 text-base">Analista 1</h3>
+                    <span class="text-xs bg-blue-100 text-blue-700 font-bold px-2.5 py-1 rounded-full" id="rt-a1-count">0 lecturas</span>
+                </div>
+                <div class="text-sm space-y-1.5">
+                    <div class="flex justify-between"><span class="text-slate-500">Promedio:</span> <span id="rt-a1-prom" class="font-semibold text-slate-800">-</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500">Desv. Estándar:</span> <span id="rt-a1-std" class="font-semibold text-slate-800">-</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500">Error Promedio:</span> <span id="rt-a1-err-prom" class="font-semibold text-slate-800">-</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500">% Rec. Promedio:</span> <span id="rt-a1-rec-prom" class="font-semibold text-slate-800">-</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500">Test de Grubbs:</span> <span id="rt-a1-grubbs" class="font-semibold text-slate-800">-</span></div>
+                </div>
+            </div>
+
+            <!-- Analista 2 -->
+            <div class="bg-white p-5 rounded-lg border border-slate-300 shadow-sm space-y-3">
+                <div class="flex justify-between items-center border-b pb-2">
+                    <h3 class="font-bold text-slate-800 text-base">Analista 2</h3>
+                    <span class="text-xs bg-purple-100 text-purple-700 font-bold px-2.5 py-1 rounded-full" id="rt-a2-count">0 lecturas</span>
+                </div>
+                <div class="text-sm space-y-1.5">
+                    <div class="flex justify-between"><span class="text-slate-500">Promedio:</span> <span id="rt-a2-prom" class="font-semibold text-slate-800">-</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500">Desv. Estándar:</span> <span id="rt-a2-std" class="font-semibold text-slate-800">-</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500">Error Promedio:</span> <span id="rt-a2-err-prom" class="font-semibold text-slate-800">-</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500">% Rec. Promedio:</span> <span id="rt-a2-rec-prom" class="font-semibold text-slate-800">-</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500">Test de Grubbs:</span> <span id="rt-a2-grubbs" class="font-semibold text-slate-800">-</span></div>
+                </div>
+            </div>
+
+            <!-- Global -->
+            <div class="bg-white p-5 rounded-lg border border-slate-300 shadow-sm space-y-3">
+                <div class="flex justify-between items-center border-b pb-2">
+                    <h3 class="font-bold text-slate-800 text-base">Consolidado Global</h3>
+                    <span class="text-xs bg-emerald-100 text-emerald-700 font-bold px-2.5 py-1 rounded-full" id="rt-global-count">0 lecturas</span>
+                </div>
+                <div class="text-sm space-y-1.5">
+                    <div class="flex justify-between"><span class="text-slate-500">Promedio Global:</span> <span id="rt-global-prom" class="font-semibold text-slate-800">-</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500">Desv. Estándar Global:</span> <span id="rt-global-std" class="font-semibold text-slate-800">-</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500">Valor Teórico (Col. F):</span> <span id="rt-valor-teorico-card" class="font-bold text-blue-700">-</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500">% Error Global:</span> <span id="rt-global-err" class="font-semibold text-slate-800">-</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500">% Rec. Global:</span> <span id="rt-global-rec" class="font-semibold text-slate-800">-</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla interactiva de lecturas por Analista -->
+        <div class="bg-white p-5 rounded-lg border border-slate-300 shadow-sm">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-slate-800 text-base">Tabla de Datos de Rango de Trabajo (RT)</h3>
+                <span class="text-xs text-slate-400 italic">* Modifique el "Factor de Dilución" para recalcular automáticamente las concentraciones e indicadores. El factor de la primera fila se replica en todas las demás; después puede ajustar cada fila por separado.</span>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-center border-collapse border border-slate-300">
+                    <thead class="bg-slate-100 text-slate-700 font-bold">
+                        <tr>
+                            <th class="border border-slate-300 p-2">#</th>
+                            <th class="border border-slate-300 p-2">Fecha Análisis</th>
+                            <th class="border border-slate-300 p-2">Analista</th>
+                            <th class="border border-slate-300 p-2">Estándar de</th>
+                            <th class="border border-slate-300 p-2">Valor Teórico (mg/L)</th>
+                            <th class="border border-slate-300 p-2">Valor Extraído</th>
+                            <th class="border border-slate-300 p-2 bg-blue-50 text-blue-800">Factor Dilución</th>
+                            <th class="border border-slate-300 p-2 bg-emerald-50 text-emerald-900">Concentración (mg/L)</th>
+                            <th class="border border-slate-300 p-2">% Error</th>
+                            <th class="border border-slate-300 p-2">% Recuperación</th>
+                            <th class="border border-slate-300 p-2">Prueba Grubbs</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bodyTablaRT" class="divide-y divide-slate-200">
+                        <!-- Inyectado dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
