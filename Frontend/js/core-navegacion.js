@@ -121,10 +121,19 @@ window.procesarFormulario = async function (e) {
     formData.append('tipo_analisis', tipoAnalisis);
     formData.append('area_analisis', rolUsuario);
 
+    // Suelos: una humedad (pW / Humedad) por submatriz -> JSON {"arenoso": {"pw": x, "humedad": x}, ...}
     if (tipoAnalisis === 'suelos') {
-        formData.append('humedad_pw', document.getElementById('humedad_pw').value || 0);
-        formData.append('humedad', document.getElementById('humedad').value || 0);
+        const humedades = window.sincronizarHumedadesSuelos();
+        if (Object.keys(humedades).length === 0) {
+            alert("Para la matriz Suelos agrega al menos una submatriz con su " + window.etiquetaHumedad() + ".");
+            return;
+        }
+        formData.append('humedades_suelos', JSON.stringify(humedades));
+    } else {
+        formData.append('humedades_suelos', '{}');
     }
+    window.tipoAnalisisActual = tipoAnalisis;
+    window.areaAnalisisActual = rolUsuario.toLowerCase();
 
     try {
         const response = await fetch(`${window.API_BASE_URL}/api/procesar-datos`, {
@@ -149,7 +158,10 @@ window.cambiarElementoGlobal = function (val) {
     window.elementoActivo = val;
     if (window.vistaActual === 'limites') window.renderizarLimites();
     if (window.vistaActual === 'precision') window.renderizarPrecision(window.controlActivoPrec);
-    if (window.vistaActual === 'exactitud') window.renderizarExactitud(window.controlActivoExa);
+    if (window.vistaActual === 'exactitud') {
+        if (window.subvistaExactitud === 'muestras') window.renderizarMuestrasAdicionadas(window.matrizActivaMuestra);
+        else window.renderizarExactitud(window.controlActivoExa);
+    }
     if (window.vistaActual === 'robustez') {
     if (typeof window.SeccionRobustez !== 'undefined') {
             window.SeccionRobustez.init(window.elementoActivo, window.datosGlobales);
@@ -189,4 +201,78 @@ window.actualizarTabs = function (prefijo, controlSeleccionado) {
             }
         }
     });
+};
+
+/* ======================================================================
+ * MATRIZ SUELOS: filas dinámicas "submatriz + pW/Humedad"
+ * ====================================================================== */
+
+// Metales (y admin) usan pW; fisicoquímico usa Humedad.
+window.etiquetaHumedad = function () {
+    const rol = (window.usuarioActual && window.usuarioActual.rol) ? window.usuarioActual.rol.toLowerCase() : 'admin';
+    return rol === 'fisicoquimico' ? 'Humedad (%)' : 'pW (%)';
+};
+
+// Deshabilita en cada <select> las submatrices ya elegidas en otras filas (sin duplicados)
+window.actualizarOpcionesSubmatrices = function () {
+    const selects = Array.from(document.querySelectorAll('#lista_submatrices .sel-submatriz'));
+    const usadas = selects.map(sel => sel.value);
+    selects.forEach(sel => {
+        Array.from(sel.options).forEach(opt => {
+            opt.disabled = (opt.value !== sel.value) && usadas.includes(opt.value);
+        });
+    });
+    const btn = document.getElementById('btn-agregar-submatriz');
+    if (btn) btn.disabled = selects.length >= window.MATRICES_SUELO.length;
+};
+
+// Lee las filas, actualiza el input oculto #humedades_suelos y devuelve el objeto
+window.sincronizarHumedadesSuelos = function () {
+    const resultado = {};
+    document.querySelectorAll('#lista_submatrices .fila-submatriz').forEach(fila => {
+        const matriz = fila.querySelector('.sel-submatriz').value;
+        const valor = parseFloat(fila.querySelector('.inp-humedad').value);
+        const v = isNaN(valor) ? 0 : valor;
+        // Se guardan ambas claves con el mismo valor: el backend elige según el área
+        resultado[matriz] = { pw: v, humedad: v };
+    });
+    const hidden = document.getElementById('humedades_suelos');
+    if (hidden) hidden.value = JSON.stringify(resultado);
+    window.actualizarOpcionesSubmatrices();
+    return resultado;
+};
+
+window.agregarFilaSubmatriz = function () {
+    const lista = document.getElementById('lista_submatrices');
+    if (!lista) return;
+
+    const usadas = Array.from(lista.querySelectorAll('.sel-submatriz')).map(s => s.value);
+    const libre = window.MATRICES_SUELO.find(m => !usadas.includes(m));
+    if (!libre) return; // ya están las 3
+
+    const fila = document.createElement('div');
+    fila.className = 'fila-submatriz flex flex-wrap items-end gap-3';
+    fila.innerHTML = `
+        <div class="flex-1 min-w-[160px]">
+            <label class="text-[10px] text-slate-400 uppercase font-bold block mb-1">Submatriz</label>
+            <select class="sel-submatriz w-full text-sm border border-slate-200 p-2 rounded-lg bg-white focus:border-[#4361EE] focus:outline-none">
+                ${window.MATRICES_SUELO.map(m => `<option value="${m}">${window.ETIQUETAS_SUELO[m]}</option>`).join('')}
+            </select>
+        </div>
+        <div class="w-40">
+            <label class="text-[10px] text-slate-400 uppercase font-bold block mb-1">${window.etiquetaHumedad()}</label>
+            <input type="number" step="any" min="0" value="0"
+                class="inp-humedad w-full text-sm border border-slate-200 p-2 rounded-lg bg-white focus:border-[#4361EE] focus:outline-none">
+        </div>
+        <button type="button" class="btn-quitar-submatriz text-red-500 hover:text-red-700 text-xs font-bold px-2 py-2">✕ Quitar</button>
+    `;
+    fila.querySelector('.sel-submatriz').value = libre;
+    fila.querySelector('.sel-submatriz').addEventListener('change', window.sincronizarHumedadesSuelos);
+    fila.querySelector('.inp-humedad').addEventListener('input', window.sincronizarHumedadesSuelos);
+    fila.querySelector('.btn-quitar-submatriz').addEventListener('click', () => {
+        fila.remove();
+        window.sincronizarHumedadesSuelos();
+    });
+    lista.appendChild(fila);
+    window.sincronizarHumedadesSuelos();
 };

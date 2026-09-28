@@ -33,7 +33,50 @@ window.ETIQUETAS_MATRIZ = {
     'agua superficial': 'AGUA SUPERFICIAL',
     'agua subterranea': 'AGUA SUBTERRÁNEA',
     'ar domestica': 'AGUA RESIDUAL DOMÉSTICA',
-    'ar no domestica': 'AGUA RESIDUAL NO DOMÉSTICA'
+    'ar no domestica': 'AGUA RESIDUAL NO DOMÉSTICA',
+    'arenoso': 'SUELO ARENOSO',
+    'arcilloso': 'SUELO ARCILLOSO',
+    'limoso': 'SUELO LIMOSO'
+};
+
+/**
+ * Matrices que se pueden mostrar según lo que eligió el usuario al cargar:
+ *  - 'suelos'  -> solo submatrices de suelo (arenoso, arcilloso, limoso)
+ *  - cualquier otro -> solo matrices de agua
+ */
+window.obtenerMatricesPermitidas = function () {
+    const esSuelos = window.tipoAnalisisActual === 'suelos';
+    return esSuelos
+        ? ['arenoso', 'arcilloso', 'limoso']
+        : ['agua superficial', 'agua subterranea', 'ar domestica', 'ar no domestica'];
+};
+
+/**
+ * Muestra solo las pestañas de matriz que aplican (según data-matriz-tipo) y oculta el resto.
+ */
+window.actualizarTabsMatriz = function () {
+    const tipoTab = window.tipoAnalisisActual === 'suelos' ? 'suelos' : 'estandar';
+    document.querySelectorAll('.tab-matriz').forEach(tab => {
+        tab.style.display = (tab.getAttribute('data-matriz-tipo') === tipoTab) ? '' : 'none';
+    });
+};
+
+/**
+ * Muestra la humedad aplicada (pW en metales, Humedad en fisicoquímico) solo para suelos.
+ */
+window.actualizarInfoHumedad = function (elemData, matrizKey) {
+    const cont = document.getElementById('infoHumedadMatriz');
+    if (!cont) return;
+    const esSuelo = window.tipoAnalisisActual === 'suelos' && window.MATRICES_SUELO.includes(matrizKey);
+    const h = elemData && elemData.humedad_aplicada_matrices ? elemData.humedad_aplicada_matrices[matrizKey] : undefined;
+    if (!esSuelo || h === undefined || h === null) {
+        cont.classList.add('hidden');
+        return;
+    }
+    const etiqueta = window.areaAnalisisActual === 'fisicoquimico' ? 'Humedad' : 'pW';
+    document.getElementById('etiquetaHumedadMatriz').textContent = `${etiqueta}:`;
+    document.getElementById('valorHumedadMatriz').textContent = `${h} %`;
+    cont.classList.remove('hidden');
 };
 
 /**
@@ -42,6 +85,7 @@ window.ETIQUETAS_MATRIZ = {
  * a renderizarMuestrasAdicionadas.
  */
 window.cambiarMatrizMuestra = function (matrizKey) {
+    if (!window.obtenerMatricesPermitidas().includes(matrizKey)) return;
     window.matrizActivaMuestra = matrizKey;
 
     // Resaltar visualmente la pestaña seleccionada
@@ -70,14 +114,24 @@ window.renderizarMuestrasAdicionadas = function (matrizKey) {
     if (contExactitud) contExactitud.classList.add('hidden');
     if (contMuestras) contMuestras.classList.remove('hidden');
 
+    window.subvistaExactitud = 'muestras';
+    window.actualizarTabsMatriz();
+
     // 2. Capturar datos del JSON global del backend para el elemento activo
     const elemData = window.datosGlobales[window.elementoActivo];
     const muestrasData = elemData.muestras || {};
 
-    // Seleccionar la matriz (por defecto la primera disponible si no se especifica)
-    const matricesDisponibles = Object.keys(muestrasData);
-    const matrizSeleccionada = matrizKey || window.matrizActivaMuestra || matricesDisponibles[0];
+    // Solo matrices coherentes con el tipo de análisis (suelos -> submatrices de suelo; resto -> agua)
+    const permitidas = window.obtenerMatricesPermitidas();
+    const matricesConDatos = Object.keys(muestrasData).filter(m => permitidas.includes(m));
+
+    // Matriz a mostrar: la pedida/activa si es válida; si no, la primera con datos; si no, la primera permitida
+    let matrizSeleccionada = matrizKey || window.matrizActivaMuestra;
+    if (!permitidas.includes(matrizSeleccionada)) {
+        matrizSeleccionada = matricesConDatos[0] || permitidas[0];
+    }
     window.matrizActivaMuestra = matrizSeleccionada;
+    window.actualizarInfoHumedad(elemData, matrizSeleccionada);
 
     // Sincronizar el resaltado de la pestaña aunque se llame sin pasar matrizKey
     // (por ejemplo, desde el botón principal "Muestras y Adicionados")
@@ -462,6 +516,10 @@ window.renderizarExactitud = function (control) {
     const statsGlobal = window.calcularExactitudGrupo(valsGlobal, valorTeorico, 2.557, "Global");
 
     document.getElementById('contenidoExactitud').classList.remove('hidden');
+    const contMuestrasEl = document.getElementById('contenidoMuestras');
+    if (contMuestrasEl) contMuestrasEl.classList.add('hidden');
+    window.subvistaExactitud = 'control';
+    window.actualizarTabsMatriz();
 
     // 1. Renderizar la Tabla Detallada de los 10 Replicados Individuales
     const tbIndividual = document.getElementById('tablaExactitudIndividual');

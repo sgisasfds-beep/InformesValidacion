@@ -14,7 +14,9 @@
             <!-- CARD 1: ARCHIVOS QC -->
             <div class="bg-white p-6 rounded-2xl shadow-[0_2px_16px_rgba(0,0,0,0.03)] border border-slate-100">
                 <div class="flex items-center gap-3 mb-5">
-                    <div class="w-9 h-9 rounded-lg bg-[#4361EE]/10 flex items-center justify-center text-[#4361EE] text-xs font-bold shrink-0">1</div>
+                    <div
+                        class="w-9 h-9 rounded-lg bg-[#4361EE]/10 flex items-center justify-center text-[#4361EE] text-xs font-bold shrink-0">
+                        1</div>
                     <div>
                         <p class="text-[10px] font-bold text-[#4361EE] uppercase tracking-wider">Paso 1</p>
                         <h3 class="text-sm font-semibold text-slate-700">Controles de Calidad</h3>
@@ -22,7 +24,8 @@
                 </div>
 
                 <label class="text-xs text-slate-400 mb-2 block">Archivos .xls de Controles de Calidad</label>
-                <div class="border-2 border-dashed border-slate-200 rounded-xl p-3 bg-slate-50/60 hover:bg-slate-50 hover:border-[#4361EE]/40 transition">
+                <div
+                    class="border-2 border-dashed border-slate-200 rounded-xl p-3 bg-slate-50/60 hover:bg-slate-50 hover:border-[#4361EE]/40 transition">
                     <input type="file" id="archivos_qc" multiple accept=".xls,.xlsx"
                         class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-[#4361EE] file:text-white file:text-xs file:font-medium hover:file:bg-[#3651d4] file:cursor-pointer cursor-pointer">
                 </div>
@@ -32,7 +35,9 @@
             <!-- CARD 2: CONFIGURACION -->
             <div class="bg-white p-6 rounded-2xl shadow-[0_2px_16px_rgba(0,0,0,0.03)] border border-slate-100">
                 <div class="flex items-center gap-3 mb-5">
-                    <div class="w-9 h-9 rounded-lg bg-[#4361EE]/10 flex items-center justify-center text-[#4361EE] text-xs font-bold shrink-0">2</div>
+                    <div
+                        class="w-9 h-9 rounded-lg bg-[#4361EE]/10 flex items-center justify-center text-[#4361EE] text-xs font-bold shrink-0">
+                        2</div>
                     <div>
                         <p class="text-[10px] font-bold text-[#4361EE] uppercase tracking-wider">Paso 2</p>
                         <h3 class="text-sm font-semibold text-slate-700">Configuración</h3>
@@ -40,19 +45,24 @@
                 </div>
 
                 <label class="text-xs text-slate-400 mb-2 block">Excel de Configuración (Valores Teóricos)</label>
-                <div class="border-2 border-dashed border-slate-200 rounded-xl p-3 bg-slate-50/60 hover:bg-slate-50 hover:border-[#4361EE]/40 transition">
+                <div
+                    class="border-2 border-dashed border-slate-200 rounded-xl p-3 bg-slate-50/60 hover:bg-slate-50 hover:border-[#4361EE]/40 transition">
                     <input type="file" id="archivo_config" accept=".xlsx,.xls"
                         class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-[#4361EE] file:text-white file:text-xs file:font-medium hover:file:bg-[#3651d4] file:cursor-pointer cursor-pointer">
                 </div>
-                <span class="text-xs text-slate-400 mt-3 block">Col A: Símbolo | Col B: LCM | Col C: CCV | Col D: EA</span>
+                <span class="text-xs text-slate-400 mt-3 block">Col A: Símbolo | Col B: LCM | Col C: CCV | Col D:
+                    EA</span>
             </div>
 
         </div>
 
         <!-- FILA 2: PASO 3 a todo lo ancho -->
-        <div data-permiso="metales,admin" class="bg-white p-6 rounded-2xl shadow-[0_2px_16px_rgba(0,0,0,0.03)] border border-slate-100">
+        <div data-permiso="metales,admin"
+            class="bg-white p-6 rounded-2xl shadow-[0_2px_16px_rgba(0,0,0,0.03)] border border-slate-100">
             <div class="flex items-center gap-3 mb-5">
-                <div class="w-9 h-9 rounded-lg bg-[#4361EE]/10 flex items-center justify-center text-[#4361EE] text-xs font-bold shrink-0">3</div>
+                <div
+                    class="w-9 h-9 rounded-lg bg-[#4361EE]/10 flex items-center justify-center text-[#4361EE] text-xs font-bold shrink-0">
+                    3</div>
                 <div>
                     <p class="text-[10px] font-bold text-[#4361EE] uppercase tracking-wider">Paso 3</p>
                     <h3 class="text-sm font-semibold text-slate-700">Tipo de Análisis</h3>
@@ -62,7 +72,7 @@
             <div class="max-w-sm">
                 <label class="text-xs text-slate-400 mb-2 block">Matriz de la muestra</label>
                 <select id="tipo_analisis"
-                    onchange="document.getElementById('campos_suelos').style.display = (this.value === 'suelos') ? 'block' : 'none';"
+                    onchange="document.getElementById('campos_suelos').style.display = (this.value === 'suelos') ? 'block' : 'none'; if (this.value === 'suelos' && !document.querySelector('#lista_submatrices .fila-submatriz')) window.agregarFilaSubmatriz();"
                     class="w-full text-sm border border-slate-200 p-2.5 rounded-xl bg-slate-50/60 focus:bg-white focus:border-[#4361EE] focus:outline-none transition">
                     <option value="estandar">Matriz Agua/TCLP</option>
                     <option value="ras">Matriz RAS</option>
@@ -72,32 +82,34 @@
             </div>
 
             <!-- Campos adicionales para la matriz suelos -->
-            <div id="campos_suelos" style="display: none;" class="mt-5 p-4 border border-[#4361EE]/15 rounded-xl bg-[#4361EE]/[0.03] max-w-md">
-                <h4 class="text-xs font-semibold text-[#4361EE] mb-3">Parámetros de Suelo</h4>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-semibold mb-1 text-slate-500">Humedad pW (%)</label>
-                        <input type="number" id="humedad_pw" name="humedad_pw" step="any" placeholder="Ej. 15.5"
-                            class="w-full text-sm border border-slate-200 p-2 rounded-lg bg-white focus:border-[#4361EE] focus:outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold mb-1 text-slate-500">Humedad (%)</label>
-                        <input type="number" id="humedad" name="humedad" step="any" placeholder="Ej. 12.0"
-                            class="w-full text-sm border border-slate-200 p-2 rounded-lg bg-white focus:border-[#4361EE] focus:outline-none">
-                    </div>
+            <div id="campos_suelos" style="display: none;"
+                class="mt-5 p-4 border border-[#4361EE]/15 rounded-xl bg-[#4361EE]/[0.03] w-full">
+                <div class="flex justify-between items-center mb-3">
+                    <h4 class="text-xs font-semibold text-[#4361EE]">Configuración de Submatrices de Suelo</h4>
+                    <button type="button" id="btn-agregar-submatriz" onclick="agregarFilaSubmatriz()"
+                        class="bg-[#4361EE] text-white text-[10px] px-2 py-1.5 rounded uppercase font-bold hover:bg-[#3651d4] transition">
+                        + Añadir Submatriz
+                    </button>
                 </div>
+
+                <div id="lista_submatrices" class="space-y-3"></div>
+                <!-- Este input oculto enviará el JSON al backend -->
+                <input type="hidden" id="humedades_suelos" name="humedades_suelos" value="{}">
             </div>
+
         </div>
 
-        <!-- BARRA DE ACCION -->
-        <div class="bg-white p-5 rounded-2xl shadow-[0_2px_16px_rgba(0,0,0,0.03)] border border-slate-100 flex flex-wrap items-center justify-between gap-4">
-            <p data-permiso="fisicoquimico" class="text-sm text-slate-400">Verifica los archivos </p>
-            <p data-permiso="metales,admin" class="text-sm text-slate-400">Verifica los archivos y la matriz seleccionada antes de continuar.</p>
-            <button type="submit"
-                class="bg-[#4361EE] text-white text-sm font-semibold px-6 py-2.5 rounded-xl hover:bg-[#3651d4] transition shadow-sm shrink-0">
-                Procesar Datos
-            </button>
-        </div>
+            <!-- BARRA DE ACCION -->
+            <div
+                class="bg-white p-5 rounded-2xl shadow-[0_2px_16px_rgba(0,0,0,0.03)] border border-slate-100 flex flex-wrap items-center justify-between gap-4">
+                <p data-permiso="fisicoquimico" class="text-sm text-slate-400">Verifica los archivos </p>
+                <p data-permiso="metales,admin" class="text-sm text-slate-400">Verifica los archivos y la matriz
+                    seleccionada antes de continuar.</p>
+                <button type="submit"
+                    class="bg-[#4361EE] text-white text-sm font-semibold px-6 py-2.5 rounded-xl hover:bg-[#3651d4] transition shadow-sm shrink-0">
+                    Procesar Datos
+                </button>
+            </div>
 
     </form>
 </section>

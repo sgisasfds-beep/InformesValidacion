@@ -15,6 +15,17 @@ window.controlActivoPrec = 'lcm';
 window.controlActivoExa = 'LCM';
 window.vistaActual = 'carga';
 
+// Contexto del último procesamiento (lo fija procesarFormulario):
+//  - tipoAnalisisActual: 'estandar' | 'ras' | 'suelos' | 'aire'
+//  - areaAnalisisActual: rol/área del usuario ('metales' -> pW, 'fisicoquimico' -> Humedad)
+window.tipoAnalisisActual = 'estandar';
+window.areaAnalisisActual = 'metales';
+window.subvistaExactitud = 'control'; // 'control' (LCM/CCV/EA) | 'muestras'
+
+// Submatrices de suelo (backend: arenoso / arcilloso / limoso)
+window.MATRICES_SUELO = ['arenoso', 'arcilloso', 'limoso'];
+window.ETIQUETAS_SUELO = { arenoso: 'Suelo arenoso', arcilloso: 'Suelo arcilloso', limoso: 'Suelo limoso' };
+
 // Estado para Linealidad (Actualizado: ya no requiere window.datosLinealidad)
 window.parametroActivoLin = '';
 
@@ -28,4 +39,3 @@ window.chartLCMInstance = null;
 window.chartPrecisionInstance = null;
 window.chartCurvasIndInstance = null;
 window.chartCurvaPromedioInstance = null;
-
