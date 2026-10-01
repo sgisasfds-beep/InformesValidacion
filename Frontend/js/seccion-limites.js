@@ -16,15 +16,25 @@ window.renderizarLimites = function () {
     document.getElementById('stat-teorico').innerText = data.teorico_lcm;
     document.getElementById('stat-error').innerText = data.lcm.global.error_pct + '%';
 
+    // Fisicoquímico: un único blanco (Analista 1). El backend lo indica con mb.solo_analista_1.
+    const soloMBA1 = data.mb.solo_analista_1 === true;
+
+    const filaStats = (ctrl, grupo, st, destacada) => `
+        <tr class="${destacada ? 'bg-blue-50/40 font-bold' : 'hover:bg-slate-50'}"><td class="border border-slate-300 p-2 ${destacada ? '' : 'font-semibold bg-slate-50'}">${ctrl}</td><td class="border border-slate-300 p-2">${grupo}</td><td class="border border-slate-300 p-2 font-mono">${st.promedio}</td><td class="border border-slate-300 p-2 font-mono">${st.desviacion}</td><td class="border border-slate-300 p-2 font-mono">${st.cv}%</td></tr>`;
+
     const tbody = document.getElementById('tablaResultados');
-    tbody.innerHTML = `
-        <tr class="hover:bg-slate-50"><td class="border border-slate-300 p-2 font-semibold bg-slate-50">MB</td><td class="border border-slate-300 p-2">Analista 1</td><td class="border border-slate-300 p-2 font-mono">${data.mb.analista_1.promedio}</td><td class="border border-slate-300 p-2 font-mono">${data.mb.analista_1.desviacion}</td><td class="border border-slate-300 p-2 font-mono">${data.mb.analista_1.cv}%</td></tr>
-        <tr class="hover:bg-slate-50"><td class="border border-slate-300 p-2 font-semibold bg-slate-50">MB</td><td class="border border-slate-300 p-2">Analista 2</td><td class="border border-slate-300 p-2 font-mono">${data.mb.analista_2.promedio}</td><td class="border border-slate-300 p-2 font-mono">${data.mb.analista_2.desviacion}</td><td class="border border-slate-300 p-2 font-mono">${data.mb.analista_2.cv}%</td></tr>
-        <tr class="bg-blue-50/40 font-bold"><td class="border border-slate-300 p-2">MB</td><td class="border border-slate-300 p-2">Global</td><td class="border border-slate-300 p-2 font-mono">${data.mb.global.promedio}</td><td class="border border-slate-300 p-2 font-mono">${data.mb.global.desviacion}</td><td class="border border-slate-300 p-2 font-mono">${data.mb.global.cv}%</td></tr>
-        <tr class="hover:bg-slate-50"><td class="border border-slate-300 p-2 font-semibold bg-slate-50">LCM</td><td class="border border-slate-300 p-2">Analista 1</td><td class="border border-slate-300 p-2 font-mono">${data.lcm.analista_1.promedio}</td><td class="border border-slate-300 p-2 font-mono">${data.lcm.analista_1.desviacion}</td><td class="border border-slate-300 p-2 font-mono">${data.lcm.analista_1.cv}%</td></tr>
-        <tr class="hover:bg-slate-50"><td class="border border-slate-300 p-2 font-semibold bg-slate-50">LCM</td><td class="border border-slate-300 p-2">Analista 2</td><td class="border border-slate-300 p-2 font-mono">${data.lcm.analista_2.promedio}</td><td class="border border-slate-300 p-2 font-mono">${data.lcm.analista_2.desviacion}</td><td class="border border-slate-300 p-2 font-mono">${data.lcm.analista_2.cv}%</td></tr>
-        <tr class="bg-blue-50/40 font-bold"><td class="border border-slate-300 p-2">LCM</td><td class="border border-slate-300 p-2">Global</td><td class="border border-slate-300 p-2 font-mono">${data.lcm.global.promedio}</td><td class="border border-slate-300 p-2 font-mono">${data.lcm.global.desviacion}</td><td class="border border-slate-300 p-2 font-mono">${data.lcm.global.cv}%</td></tr>
-    `;
+    tbody.innerHTML =
+        filaStats('MB', 'Analista 1', data.mb.analista_1, false) +
+        (soloMBA1 ? '' : filaStats('MB', 'Analista 2', data.mb.analista_2, false) + filaStats('MB', 'Global', data.mb.global, true)) +
+        filaStats('LCM', 'Analista 1', data.lcm.analista_1, false) +
+        filaStats('LCM', 'Analista 2', data.lcm.analista_2, false) +
+        filaStats('LCM', 'Global', data.lcm.global, true);
+
+    // Cabecera de la tabla de datos brutos: ocultar la columna MB del Analista 2
+    const thMB = document.getElementById('th-mb');
+    const thMBa2 = document.getElementById('th-mb-a2');
+    if (thMB) thMB.colSpan = soloMBA1 ? 1 : 2;
+    if (thMBa2) thMBa2.style.display = soloMBA1 ? 'none' : '';
 
     const tbBrutos = document.getElementById('tablaDatosBrutos');
     if (tbBrutos) {
@@ -44,7 +54,7 @@ window.renderizarLimites = function () {
                 <tr class="hover:bg-slate-50">
                     <td class="border border-slate-300 p-1.5 font-bold bg-slate-50">${i + 1}</td>
                     <td class="border border-slate-300 p-1.5 font-mono text-slate-600">${vMB1}</td>
-                    <td class="border border-slate-300 p-1.5 font-mono text-slate-600">${vMB2}</td>
+                    ${soloMBA1 ? '' : `<td class="border border-slate-300 p-1.5 font-mono text-slate-600">${vMB2}</td>`}
                     <td class="border border-slate-300 p-1.5 font-mono text-indigo-700 font-medium">${vLCM1}</td>
                     <td class="border border-slate-300 p-1.5 font-mono text-indigo-700 font-medium">${vLCM2}</td>
                 </tr>
@@ -62,7 +72,7 @@ window.renderizarLimites = function () {
         data: {
             datasets: [
                 { label: 'Analista 1', data: data.mb.raw.filter(d => d.analista === 'Analista 1').map((d, i) => ({ x: i + 1, y: d.valor })), backgroundColor: '#2563eb' },
-                { label: 'Analista 2', data: data.mb.raw.filter(d => d.analista === 'Analista 2').map((d, i) => ({ x: i + 1, y: d.valor })), backgroundColor: '#059669' }
+                ...(soloMBA1 ? [] : [{ label: 'Analista 2', data: data.mb.raw.filter(d => d.analista === 'Analista 2').map((d, i) => ({ x: i + 1, y: d.valor })), backgroundColor: '#059669' }])
             ]
         },
         options: { responsive: true, scales: { x: { title: { display: true, text: 'Ensayos' } } } }
@@ -81,4 +91,3 @@ window.renderizarLimites = function () {
         options: { responsive: true, scales: { x: { title: { display: true, text: 'Ensayos' }, min: 0, max: 11 } } }
     });
 };
-

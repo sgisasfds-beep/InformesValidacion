@@ -101,7 +101,7 @@ window.pintarStatsRT = function (prefijo, r) {
         set(`${k}-count`, `${st.count} lecturas`);
         set(`${k}-prom`, st.prom.toFixed(4));
         set(`${k}-std`, st.std.toFixed(4));
-        set(`${k}-err-prom`, `${st.errProm.toFixed(4)} (${errPct.toFixed(2)}%)`);
+        set(`${k}-err-prom`, `${errPct.toFixed(2)}%`);
         set(`${k}-rec-prom`, `${st.recProm.toFixed(2)}%`);
         set(`${k}-grubbs`, gr.indicesOutliers.length > 0 ? `${gr.indicesOutliers.length} atípicos` : 'Sin atípicos');
     });

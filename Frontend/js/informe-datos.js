@@ -946,6 +946,24 @@ window.renderizarRasDinamico = function (linData) {
 // que ya aplica los factores de dilución definidos en la pestaña Rango de
 // Trabajo, y rellena las tarjetas (ids inf-rt-*) y la Tabla 6.
 // ============================================================================
+// Fechas de análisis (tomadas del archivo principal) por analista, en el mismo
+// orden que los valores de data[ctrl].analista_N.valores.
+window.fechasControlPorAnalista = function (objCtrl, analista) {
+    const raw = (objCtrl && Array.isArray(objCtrl.raw)) ? objCtrl.raw : [];
+    return raw.filter(d => d.analista === analista).map(d => d.fecha || 'Sin fecha');
+};
+
+// Celda única de fecha para las tablas de muestras (Tablas 5+): si muestra,
+// adicionado y duplicado se analizaron el mismo día muestra una sola fecha;
+// si difieren, las apila indicando a cuál corresponde cada una.
+window.fechaFilaMuestra = function (r) {
+    const n = r.fecha_normal, a = r.fecha_adic, d = r.fecha_dup;
+    const definidas = [n, a, d].filter(x => x);
+    if (definidas.length === 0) return '-';
+    if (new Set(definidas).size === 1) return definidas[0];
+    return `<div class="leading-tight"> ${n || '-'}<br></div>`;
+};
+
 window.renderizarRangoTrabajoInforme = function (elem) {
     const tbody = document.getElementById('inf-tabla-datos-rango-trabajo');
     const r = (typeof window.calcularDatosRT === 'function') ? window.calcularDatosRT(elem) : null;
@@ -1110,17 +1128,32 @@ window.poblarSeccion6Resultados = function (elem) {
     const tbodyMbLcm = document.getElementById('inf-tabla-datos-mb-lcm');
     if (tbodyMbLcm && data.mb && data.lcm) {
         let htmlRows = '';
+        // Fisicoquímico: un único blanco (Analista 1)
+        const soloMBA1 = data.mb.solo_analista_1 === true;
+        const thFecha = document.getElementById('inf-th-fecha');
+        const thFechaA2 = document.getElementById('inf-th-fecha-a2');
+        const thMB = document.getElementById('inf-th-mb');
+        const thMBA2 = document.getElementById('inf-th-mb-a2');
+        if (thFecha) thFecha.colSpan = soloMBA1 ? 1 : 2;
+        if (thMB) thMB.colSpan = soloMBA1 ? 1 : 2;
+        if (thFechaA2) thFechaA2.style.display = soloMBA1 ? 'none' : '';
+        if (thMBA2) thMBA2.style.display = soloMBA1 ? 'none' : '';
         const valsMBA1 = data.mb.analista_1?.valores || [];
         const valsMBA2 = data.mb.analista_2?.valores || [];
         const valsLCMA1 = data.lcm.analista_1?.valores || [];
         const valsLCMA2 = data.lcm.analista_2?.valores || [];
 
+        const fechasMBA1 = window.fechasControlPorAnalista(data.mb, 'Analista 1');
+        const fechasMBA2 = window.fechasControlPorAnalista(data.mb, 'Analista 2');
+
         for (let i = 0; i < 10; i++) {
             htmlRows += `
                 <tr class="hover:bg-slate-50">
+                    <td class="border border-slate-300 p-1 font-mono text-[10px] bg-amber-50/50">${fechasMBA1[i] ?? '-'}</td>
+                    ${soloMBA1 ? '' : `<td class="border border-slate-300 p-1 font-mono text-[10px] bg-amber-50/50">${fechasMBA2[i] ?? '-'}</td>`}
                     <td class="border border-slate-300 p-1 font-bold bg-slate-50">${i + 1}</td>
                     <td class="border border-slate-300 p-1 font-mono">${valsMBA1[i] ?? '-'}</td>
-                    <td class="border border-slate-300 p-1 font-mono">${valsMBA2[i] ?? '-'}</td>
+                    ${soloMBA1 ? '' : `<td class="border border-slate-300 p-1 font-mono">${valsMBA2[i] ?? '-'}</td>`}
                     <td class="border border-slate-300 p-1 font-mono text-blue-700 font-bold">${valsLCMA1[i] ?? '-'}</td>
                     <td class="border border-slate-300 p-1 font-mono text-blue-700 font-bold">${valsLCMA2[i] ?? '-'}</td>
                 </tr>
@@ -1131,10 +1164,11 @@ window.poblarSeccion6Resultados = function (elem) {
 
     const tbodyResumenMbLcm = document.getElementById('inf-tabla-resumen-mb-lcm');
     if (tbodyResumenMbLcm && data.mb && data.lcm) {
+        const soloMB_A1 = data.mb.solo_analista_1 === true;
         tbodyResumenMbLcm.innerHTML = `
             <tr><td class="border border-slate-300 p-1.5 font-bold">MB</td><td class="border border-slate-300 p-1.5">Analista 1</td><td class="border border-slate-300 p-1.5 font-mono">${data.mb.analista_1.promedio}</td><td class="border border-slate-300 p-1.5 font-mono">${data.mb.analista_1.desviacion}</td><td class="border border-slate-300 p-1.5 font-mono">${data.mb.analista_1.cv}%</td></tr>
-            <tr><td class="border border-slate-300 p-1.5 font-bold">MB</td><td class="border border-slate-300 p-1.5">Analista 2</td><td class="border border-slate-300 p-1.5 font-mono">${data.mb.analista_2.promedio}</td><td class="border border-slate-300 p-1.5 font-mono">${data.mb.analista_2.desviacion}</td><td class="border border-slate-300 p-1.5 font-mono">${data.mb.analista_2.cv}%</td></tr>
-            <tr class="bg-blue-50 font-bold"><td class="border border-slate-300 p-1.5">MB</td><td class="border border-slate-300 p-1.5">Global</td><td class="border border-slate-300 p-1.5 font-mono">${data.mb.global.promedio}</td><td class="border border-slate-300 p-1.5 font-mono">${data.mb.global.desviacion}</td><td class="border border-slate-300 p-1.5 font-mono">${data.mb.global.cv}%</td></tr>
+            ${soloMB_A1 ? '' : `<tr><td class="border border-slate-300 p-1.5 font-bold">MB</td><td class="border border-slate-300 p-1.5">Analista 2</td><td class="border border-slate-300 p-1.5 font-mono">${data.mb.analista_2.promedio}</td><td class="border border-slate-300 p-1.5 font-mono">${data.mb.analista_2.desviacion}</td><td class="border border-slate-300 p-1.5 font-mono">${data.mb.analista_2.cv}%</td></tr>`}
+            ${soloMB_A1 ? '' : `<tr class="bg-blue-50 font-bold"><td class="border border-slate-300 p-1.5">MB</td><td class="border border-slate-300 p-1.5">Global</td><td class="border border-slate-300 p-1.5 font-mono">${data.mb.global.promedio}</td><td class="border border-slate-300 p-1.5 font-mono">${data.mb.global.desviacion}</td><td class="border border-slate-300 p-1.5 font-mono">${data.mb.global.cv}%</td></tr>`}
             <tr><td class="border border-slate-300 p-1.5 font-bold">LCM</td><td class="border border-slate-300 p-1.5">Analista 1</td><td class="border border-slate-300 p-1.5 font-mono">${data.lcm.analista_1.promedio}</td><td class="border border-slate-300 p-1.5 font-mono">${data.lcm.analista_1.desviacion}</td><td class="border border-slate-300 p-1.5 font-mono">${data.lcm.analista_1.cv}%</td></tr>
             <tr><td class="border border-slate-300 p-1.5 font-bold">LCM</td><td class="border border-slate-300 p-1.5">Analista 2</td><td class="border border-slate-300 p-1.5 font-mono">${data.lcm.analista_2.promedio}</td><td class="border border-slate-300 p-1.5 font-mono">${data.lcm.analista_2.desviacion}</td><td class="border border-slate-300 p-1.5 font-mono">${data.lcm.analista_2.cv}%</td></tr>
             <tr class="bg-blue-50 font-bold"><td class="border border-slate-300 p-1.5">LCM</td><td class="border border-slate-300 p-1.5">Global</td><td class="border border-slate-300 p-1.5 font-mono">${data.lcm.global.promedio}</td><td class="border border-slate-300 p-1.5 font-mono">${data.lcm.global.desviacion}</td><td class="border border-slate-300 p-1.5 font-mono">${data.lcm.global.cv}%</td></tr>
@@ -1271,6 +1305,9 @@ window.poblarSeccion6Resultados = function (elem) {
             const vA2 = objCtrl.analista_2?.valores || objCtrl.analista_2 || (objCtrl.raw ? objCtrl.raw.filter(d => d.analista === 'Analista 2').map(d => d.valor) : []);
             const teo = data[`teorico_${ctrl}`] || data[`teorico_${ctrl.toLowerCase()}`] || data.exactitud?.[ctrl]?.teorico || data.exactitud?.[tag]?.teorico || (ctrl === 'lcm' ? data.teorico_lcm : 1);
 
+            const fechasA1 = window.fechasControlPorAnalista(objCtrl, 'Analista 1');
+            const fechasA2 = window.fechasControlPorAnalista(objCtrl, 'Analista 2');
+
             const maxLen = Math.max(vA1.length, vA2.length, 10);
             for (let i = 0; i < maxLen; i++) {
                 const valA1 = vA1[i];
@@ -1284,6 +1321,8 @@ window.poblarSeccion6Resultados = function (elem) {
 
                 htmlInd += `
                     <tr class="hover:bg-slate-50">
+                        <td class="border border-slate-300 p-1 font-mono text-[10px] bg-amber-50/50">${valA1 !== undefined ? (fechasA1[i] ?? '-') : '-'}</td>
+                        <td class="border border-slate-300 p-1 font-mono text-[10px] bg-amber-50/50">${valA2 !== undefined ? (fechasA2[i] ?? '-') : '-'}</td>
                         <td class="border border-slate-300 p-1 font-bold uppercase bg-slate-50">${tag} - #${i + 1}</td>
                         <td class="border border-slate-300 p-1 font-mono">${valA1 !== undefined ? valA1 : '-'}</td>
                         <td class="border border-slate-300 p-1 font-mono">${valA1 !== undefined ? errA1 + '%' : '-'}</td>
@@ -1440,6 +1479,7 @@ window.poblarSeccion6Resultados = function (elem) {
                                 <table class="w-full text-xs text-center border-collapse border border-slate-300">
                                     <thead>
                                         <tr class="bg-slate-100 font-bold text-slate-700 border-b border-slate-300">
+                                            <th class="border border-slate-300 p-1.5 bg-amber-50">Fecha</th>
                                             <th class="border border-slate-300 p-1.5 bg-slate-200">Réplica #</th>
                                             <th class="border border-slate-300 p-1.5 bg-slate-200">Analista</th>
                                             <th class="border border-slate-300 p-1.5">Conc. Muestra</th>
@@ -1472,10 +1512,11 @@ window.poblarSeccion6Resultados = function (elem) {
             const tbody = document.getElementById(`inf-tabla-mues-${idx}`);
             if (tbody) {
                 if (filas.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="8" class="p-3 text-slate-400 italic">No hay datos registrados para esta submatriz.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="9" class="p-3 text-slate-400 italic">No hay datos registrados para esta submatriz.</td></tr>`;
                 } else {
                     tbody.innerHTML = filas.map(r => `
                         <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="border border-slate-300 p-1 font-mono text-[10px] bg-amber-50/50">${window.fechaFilaMuestra(r)}</td>
                             <td class="border border-slate-300 p-1 font-semibold text-slate-700">${r.replica ?? '-'}</td>
                             <td class="border border-slate-300 p-1">${r.analista || 'N/A'}</td>
                             <td class="border border-slate-300 p-1 font-mono">${r.normal !== undefined ? Number(r.normal).toFixed(3) : '-'}</td>
