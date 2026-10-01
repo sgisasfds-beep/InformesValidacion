@@ -86,6 +86,155 @@ window.toggleVolFinalMuestra = function () {
     }
 };
 
+// ============================================================================
+// PREPARACIONES DEL PATRÓN DE TRABAJO (lista dinámica: 1..N por elemento)
+// ============================================================================
+window.preparacionesTrabajo = null;   // Array de preparaciones del elemento activo
+window._prepElemento = undefined;     // Elemento al que pertenece el array en memoria
+
+window.OPCIONES_INST_PREP = [
+    ['pipeta', 'Pipeta Aforada (Tabla Metrológica)'],
+    ['trans_0.5_10', 'Transferpipeta (0.5 a 10 µL) - U: 0.0085'],
+    ['trans_10_100', 'Transferpipeta (10 a 100 µL) - U: 0.0801'],
+    ['trans_100_1000', 'Transferpipeta (100 a 1000 µL) - U: 0.7511'],
+    ['trans_1_10ml', 'Transferpipeta (1 a 10 mL) - U: 0.0080'],
+    ['balanza', 'Balanza Analitica']
+];
+window.OPCIONES_VOLFINAL_PREP = [
+    ['50', '50 mL (±0.100 mL)'],
+    ['100', '100 mL (±0.100 mL)'],
+    ['250', '250 mL (±0.120 mL)'],
+    ['500', '500 mL (±0.250 mL)'],
+    ['1000', '1000 mL (±0.400 mL)']
+];
+
+window.preparacionTrabajoDefault = function () {
+    return { conc: '', alicuota: 5, peso: 0, inst: 'pipeta', volFinal: 100 };
+};
+
+const _escAttr = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/**
+ * Arma el array en memoria a partir de la configuración guardada. Soporta el formato
+ * anterior (una sola preparación en inpAlicuotaTrabajo / inpPesoTrabajo / ...).
+ */
+window.inicializarPreparacionesDesdeConfig = function (config) {
+    let lista;
+    if (config && Array.isArray(config.preparaciones) && config.preparaciones.length > 0) {
+        lista = config.preparaciones.map(p => Object.assign(window.preparacionTrabajoDefault(), p));
+    } else if (config && (config.inpAlicuotaTrabajo !== undefined || config.inpPesoTrabajo !== undefined)) {
+        lista = [Object.assign(window.preparacionTrabajoDefault(), {
+            alicuota: config.inpAlicuotaTrabajo ?? 5,
+            peso: config.inpPesoTrabajo ?? 0,
+            inst: config.selInstTrabajo || 'pipeta',
+            volFinal: config.selVolFinalTrabajo || 100
+        })];
+    } else {
+        lista = [window.preparacionTrabajoDefault()];
+    }
+    window.preparacionesTrabajo = lista;
+    window._prepElemento = window.elementoActivo;
+    window.renderizarPreparacionesTrabajo();
+};
+
+/**
+ * Garantiza que el array en memoria corresponda al elemento activo y que el DOM
+ * (que puede haberse reinyectado al cambiar de pestaña) esté sincronizado.
+ */
+window.asegurarPreparacionesTrabajo = function () {
+    if (!Array.isArray(window.preparacionesTrabajo) || window._prepElemento !== window.elementoActivo) {
+        let config = window.datosGlobales?.[window.elementoActivo]?.configIncertidumbre;
+        if (!config) {
+            try {
+                const localData = localStorage.getItem(`lims_cfg_incertidumbre_${window.elementoActivo}`);
+                if (localData) config = JSON.parse(localData);
+            } catch (e) { }
+        }
+        window.inicializarPreparacionesDesdeConfig(config);
+        return;
+    }
+    const cont = document.getElementById('contenedorPreparaciones');
+    if (cont && cont.children.length !== window.preparacionesTrabajo.length) {
+        window.renderizarPreparacionesTrabajo();
+    }
+};
+
+window.renderizarPreparacionesTrabajo = function () {
+    const cont = document.getElementById('contenedorPreparaciones');
+    if (!cont) return;
+    const preps = window.preparacionesTrabajo || [];
+
+    cont.innerHTML = preps.map((p, i) => {
+        const optsInst = window.OPCIONES_INST_PREP.map(([v, t]) =>
+            `<option value="${v}" ${p.inst === v ? 'selected' : ''}>${t}</option>`).join('');
+        const optsVol = window.OPCIONES_VOLFINAL_PREP.map(([v, t]) =>
+            `<option value="${v}" ${String(p.volFinal) === v ? 'selected' : ''}>${t}</option>`).join('');
+
+        return `
+        <div class="border border-slate-200 rounded-lg p-3 bg-slate-50/60 space-y-2">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-indigo-700">Preparación ${i + 1}</span>
+                ${preps.length > 1 ? `<button type="button" onclick="window.eliminarPreparacionTrabajo(${i})"
+                    class="text-[11px] font-semibold text-red-600 hover:text-red-800 cursor-pointer">Eliminar</button>` : ''}
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-600">Concentración del patrón (mg/L) <span class="text-[10px] text-slate-400 font-normal">(opcional, solo identifica)</span>:</label>
+                <input type="text" value="${_escAttr(p.conc)}" placeholder="Ej: 250"
+                    oninput="window.actualizarPreparacionTrabajo(${i}, 'conc', this.value)"
+                    class="w-full border border-slate-300 rounded p-1.5 text-sm font-mono font-bold text-slate-700 bg-white">
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600">Alícuota (mL):</label>
+                    <input type="number" value="${_escAttr(p.alicuota)}" step="0.1"
+                        oninput="window.actualizarPreparacionTrabajo(${i}, 'alicuota', this.value)"
+                        class="w-full border border-slate-300 rounded p-1.5 text-sm font-mono font-bold text-blue-600 bg-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600">Peso (g) <span class="text-[10px] text-amber-600 font-normal">(0=Volumen)</span>:</label>
+                    <input type="number" value="${_escAttr(p.peso)}" step="0.0001"
+                        oninput="window.actualizarPreparacionTrabajo(${i}, 'peso', this.value)"
+                        class="w-full border border-slate-300 rounded p-1.5 text-sm font-mono font-bold text-emerald-600 bg-white">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-600">Instrumento de Alícuota:</label>
+                <select onchange="window.actualizarPreparacionTrabajo(${i}, 'inst', this.value)"
+                    class="w-full border border-slate-300 rounded p-1.5 text-xs font-semibold bg-white mt-1 cursor-pointer">${optsInst}</select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-600">Volumen Final (mL) - Balón Aforado:</label>
+                <select onchange="window.actualizarPreparacionTrabajo(${i}, 'volFinal', this.value)"
+                    class="w-full border border-slate-300 rounded p-1.5 text-xs font-semibold bg-white mt-1 cursor-pointer">${optsVol}</select>
+            </div>
+        </div>`;
+    }).join('');
+};
+
+window.actualizarPreparacionTrabajo = function (idx, campo, valor) {
+    if (!window.preparacionesTrabajo || !window.preparacionesTrabajo[idx]) return;
+    window.preparacionesTrabajo[idx][campo] = valor;
+    window.calcularIncertidumbre();
+};
+
+window.agregarPreparacionTrabajo = function () {
+    window.asegurarPreparacionesTrabajo();
+    window.preparacionesTrabajo.push(window.preparacionTrabajoDefault());
+    window.renderizarPreparacionesTrabajo();
+    window.calcularIncertidumbre();
+};
+
+window.eliminarPreparacionTrabajo = function (idx) {
+    if (!window.preparacionesTrabajo || window.preparacionesTrabajo.length <= 1) return;
+    window.preparacionesTrabajo.splice(idx, 1);
+    window.renderizarPreparacionesTrabajo();
+    window.calcularIncertidumbre();
+};
+
 // Función para el nuevo cálculo de incertidumbre estandar de la balanza en gramos
 window.calcularU_BalanzaGramos = function (valorPesado) {
     if (valorPesado <= 0) return 0;
@@ -217,6 +366,7 @@ window.calcularUEstandarizacionRelativa = function (elemento) {
  * Motor Principal: Evalúa incertidumbres Tipo A, Tipo B, Regresión Lineal y dibuja el gráfico.
  */
 window.calcularIncertidumbre = function () {
+    window.asegurarPreparacionesTrabajo();
     window.guardarConfigIncertidumbre();
     if (!window.elementoActivo || !window.datosGlobales || !window.datosGlobales[window.elementoActivo]) return;
     const elemData = window.datosGlobales[window.elementoActivo];
@@ -237,21 +387,21 @@ window.calcularIncertidumbre = function () {
     const u_patron_rel = usaPatron ? (2 / 1000) : 0; // 0.00200 relativo según certificado
 
     // --- 3. INCERTIDUMBRE TIPO B: PREPARACIÓN DEL PATRÓN DE TRABAJO ---
-    const alicuotaTrab = parseFloat(document.getElementById('inpAlicuotaTrabajo')?.value || 5);
-    const pesoTrab = parseFloat(document.getElementById('inpPesoTrabajo')?.value || 0);
-    const volFinalTrab = parseFloat(document.getElementById('selVolFinalTrabajo')?.value || 100);
-    const instTrab = document.getElementById('selInstTrabajo')?.value || "pipeta";
-
-    let u_alicuota_trab_rel = 0;
-    if (pesoTrab > 0) {
-        // Alícuota por pesada (Balanza Analítica - Distribución Rectangular)
-        u_alicuota_trab_rel = window.calcularU_BalanzaGramos(pesoTrab);
-    } else {
-        // Alícuota volumétrica
-        u_alicuota_trab_rel = window.calcUVolumetricaRel(alicuotaTrab, 'pipeta', instTrab);
-    }
-    const u_vol_final_trab_rel = window.calcUVolumetricaRel(volFinalTrab, 'balon', null);
-    let u_prep_trabajo_rel = Math.sqrt(Math.pow(u_alicuota_trab_rel, 2) + Math.pow(u_vol_final_trab_rel, 2));
+    // Una fila independiente por cada preparación (p. ej. patrones de 250, 50 y 5 mg/L).
+    // Cada una combina su alícuota (pesada o volumétrica) con su aforo final; las varianzas
+    // de todas las preparaciones se suman después en la varianza total.
+    const num = (v, def) => { const n = parseFloat(v); return isNaN(n) ? def : n; };
+    const prepsCalc = window.preparacionesTrabajo.map((p) => {
+        const alic = num(p.alicuota, 0);
+        const peso = num(p.peso, 0);
+        const volFinal = num(p.volFinal, 100);
+        const u_alic = peso > 0
+            ? window.calcularU_BalanzaGramos(peso)                                   // Pesada (balanza)
+            : window.calcUVolumetricaRel(alic, 'pipeta', p.inst || 'pipeta');         // Volumétrica
+        const u_vf = window.calcUVolumetricaRel(volFinal, 'balon', null);
+        const uRel = Math.sqrt(Math.pow(u_alic, 2) + Math.pow(u_vf, 2));
+        return { conc: String(p.conc ?? '').trim(), alic, peso, volFinal, uRel, varSq: Math.pow(uRel, 2) };
+    });
 
     // --- 4. INCERTIDUMBRE TIPO B: INTERPOLACIÓN DE LA CURVA DE CALIBRACIÓN ---
     let u_curva_total_rel = 0;
@@ -391,19 +541,18 @@ window.calcularIncertidumbre = function () {
     const u_estandarizacion_rel = estandarizacionInfo.uRel || 0;
 
     // --- === LÓGICA ESPECIAL PARA RAS === ---
-    let var_prep_trab = Math.pow(u_prep_trabajo_rel, 2);
     let var_curva_tot = Math.pow(u_curva_total_rel, 2);
 
     if (esRAS) {
-        // En RAS la varianza de preparación de patrones y de la curva 
+        // En RAS la varianza de preparación de patrones y de la curva
         // es la suma de las contribuciones de Ca, Mg y Na (3x)
-        var_prep_trab *= 3;
+        prepsCalc.forEach(p => { p.varSq *= 3; p.uRel = Math.sqrt(p.varSq); });
         var_curva_tot *= 3;
-
-        // Recalcular incertidumbres relativas para la tabla
-        u_prep_trabajo_rel = Math.sqrt(var_prep_trab);
         u_curva_total_rel = Math.sqrt(var_curva_tot);
     }
+
+    // Varianza total de la preparación de patrones de trabajo (suma de todas las preparaciones)
+    const var_prep_trab = prepsCalc.reduce((acc, p) => acc + p.varSq, 0);
 
     // --- 7. COMBINACIÓN TOTAL Y EXPANDIDA ---
     const var_estandarizacion = Math.pow(u_estandarizacion_rel, 2);
@@ -416,52 +565,84 @@ window.calcularIncertidumbre = function () {
 
     const porc = (val_sq) => var_total > 0 ? ((val_sq / var_total) * 100).toFixed(1) + '%' : '0.0%';
 
+    // --- Filas del presupuesto (única fuente para la tabla, el gráfico y el informe) ---
+    const COLORES_PREP = ['#f59e0b', '#fb923c', '#fbbf24', '#d97706', '#ea580c', '#fcd34d', '#b45309', '#fdba74'];
+    const n_preps = prepsCalc.length;
+    const filas = [];
+
+    filas.push({
+        txt: `1. Repetibilidad LCM (${analistaSel})`,
+        html: `1. Repetibilidad LCM (${analistaSel})`,
+        tipo: 'Tipo A',
+        detalle: `s = ${(lcmStats.desviacion || 0).toFixed(4)}`,
+        uRel: u_A_rel, varSq: Math.pow(u_A_rel, 2),
+        corto: '1. Tipo A (LCM)', color: '#2563eb'
+    });
+
+    filas.push({
+        txt: '2. Patrón Certificable (CRM)',
+        html: '2. Patrón Certificable (CRM)',
+        tipo: 'Tipo B',
+        detalle: usaPatron ? '2 / 1000' : 'N/A',
+        uRel: u_patron_rel, varSq: Math.pow(u_patron_rel, 2),
+        corto: '2. Patrón (CRM)', color: '#10b981'
+    });
+
+    prepsCalc.forEach((p, i) => {
+        const prefijo = n_preps > 1 ? `3.${i + 1}` : '3';
+        const concTxt = p.conc ? ` ${p.conc} mg/L` : (n_preps > 1 ? ` #${i + 1}` : '');
+        const modo = p.peso > 0 ? '(Pesada)' : '(Volumen)';
+        const sufijoTxt = esRAS ? '(Suma 3 Cationes)' : modo;
+        const sufijoHtml = esRAS ? '<span class="text-xs text-blue-600 font-semibold">(Suma 3 Cationes)</span>' : modo;
+        const tag = _escAttr(concTxt);
+        filas.push({
+            txt: `${prefijo} Prep. Patrón Trabajo${concTxt} ${sufijoTxt}`,
+            html: `${prefijo} Prep. Patrón Trabajo${tag} ${sufijoHtml}`,
+            tipo: 'Tipo B',
+            detalle: `${p.peso > 0 ? p.peso + ' g' : p.alic + ' mL'} → ${p.volFinal} mL`,
+            uRel: p.uRel, varSq: p.varSq,
+            corto: n_preps > 1 ? `3.${i + 1} Prep. Trabajo${concTxt}` : '3. Prep. Trabajo',
+            color: COLORES_PREP[i % COLORES_PREP.length]
+        });
+    });
+
+    filas.push({
+        txt: `4. Curva de Calibración ${esRAS ? '(Suma 3 Cationes)' : '(Prep + Regresión)'}`,
+        html: `4. Curva de Calibración ${esRAS ? '<span class="text-xs text-blue-600 font-semibold">(Suma 3 Cationes)</span>' : '(Prep + Regresión)'}`,
+        tipo: 'Tipo B',
+        detalle: `s_res = ${s_res.toFixed(4)}`,
+        uRel: u_curva_total_rel, varSq: var_curva_tot,
+        corto: '4. Curva Calib.', color: '#8b5cf6'
+    });
+
+    filas.push({
+        txt: `5. Trat. Muestra ${pesoMuestra > 0 ? '(Pesada)' : '(Volumen)'}${usaVolFinalMuestra ? ' + Aforo' : ''}`,
+        html: `5. Trat. Muestra ${pesoMuestra > 0 ? '(Pesada)' : '(Volumen)'}${usaVolFinalMuestra ? ' + Aforo' : ''}`,
+        tipo: 'Tipo B',
+        detalle: pesoMuestra > 0 ? `${pesoMuestra} g` : `${alicuotaMuestra} mL`,
+        uRel: u_muestra_rel, varSq: Math.pow(u_muestra_rel, 2),
+        corto: '5. Toma Muestra', color: '#ec4899'
+    });
+
+    filas.push({
+        txt: `6. Estandarización del Titulante ${estandarizacionInfo.existe ? `(${estandarizacionInfo.tabs.length} titulante${estandarizacionInfo.tabs.length > 1 ? 's' : ''})` : '(sin datos)'}`,
+        html: `6. Estandarización del Titulante ${estandarizacionInfo.existe ? `<span class="text-xs text-purple-600 font-semibold">(${estandarizacionInfo.tabs.length} titulante${estandarizacionInfo.tabs.length > 1 ? 's' : ''})</span>` : '<span class="text-xs text-slate-400 font-normal">(sin datos)</span>'}`,
+        tipo: 'Tipo B',
+        detalle: estandarizacionInfo.existe ? 'Triplicado' : 'N/A',
+        uRel: u_estandarizacion_rel, varSq: var_estandarizacion,
+        corto: '6. Estandarización', color: '#a855f7'
+    });
+
     const tbody = document.getElementById('tablaResumenIncertidumbre');
     if (tbody) {
-        tbody.innerHTML = `
-            <tr class="hover:bg-slate-50 transition">
-                <td class="border border-slate-300 p-2.5 text-slate-800">1. Repetibilidad LCM (${analistaSel})</td>
-                <td class="border border-slate-300 p-2.5 text-center font-bold text-blue-600">Tipo A</td>
-                <td class="border border-slate-300 p-2.5 text-right font-mono text-slate-600">s = ${(lcmStats.desviacion || 0).toFixed(4)}</td>
-                <td class="border border-slate-300 p-2.5 text-right font-mono font-bold text-slate-700">${u_A_rel.toFixed(5)}</td>
-                <td class="border border-slate-300 p-2.5 text-right font-bold text-indigo-600">${porc(Math.pow(u_A_rel, 2))}</td>
-            </tr>
-            <tr class="hover:bg-slate-50 bg-slate-50/60 transition">
-                <td class="border border-slate-300 p-2.5 text-slate-800">2. Patrón Certificable (CRM)</td>
-                <td class="border border-slate-300 p-2.5 text-center font-bold text-emerald-600">Tipo B</td>
-                <td class="border border-slate-300 p-2.5 text-right font-mono text-slate-600">${usaPatron ? '2 / 1000' : 'N/A'}</td>
-                <td class="border border-slate-300 p-2.5 text-right font-mono font-bold text-slate-700">${u_patron_rel.toFixed(5)}</td>
-                <td class="border border-slate-300 p-2.5 text-right font-bold text-indigo-600">${porc(Math.pow(u_patron_rel, 2))}</td>
-            </tr>
-            <tr class="hover:bg-slate-50 transition">
-                <td class="border border-slate-300 p-2.5 text-slate-800">3. Prep. Patrón Trabajo ${esRAS ? '<span class="text-xs text-blue-600 font-semibold">(Suma 3 Cationes)</span>' : (pesoTrab > 0 ? '(Pesada)' : '(Volumen)')}</td>
-                <td class="border border-slate-300 p-2.5 text-center font-bold text-emerald-600">Tipo B</td>
-                <td class="border border-slate-300 p-2.5 text-right font-mono text-slate-600">${pesoTrab > 0 ? pesoTrab + ' g' : alicuotaTrab + ' mL'}</td>
-                <td class="border border-slate-300 p-2.5 text-right font-mono font-bold text-slate-700">${u_prep_trabajo_rel.toFixed(5)}</td>
-                <td class="border border-slate-300 p-2.5 text-right font-bold text-indigo-600">${porc(var_prep_trab)}</td>
-            </tr>
-            <tr class="hover:bg-slate-50 bg-slate-50/60 transition">
-                <td class="border border-slate-300 p-2.5 text-slate-800">4. Curva de Calibración ${esRAS ? '<span class="text-xs text-blue-600 font-semibold">(Suma 3 Cationes)</span>' : '(Prep + Regresión)'}</td>
-                <td class="border border-slate-300 p-2.5 text-center font-bold text-emerald-600">Tipo B</td>
-                <td class="border border-slate-300 p-2.5 text-right font-mono text-slate-600">s_res = ${s_res.toFixed(4)}</td>
-                <td class="border border-slate-300 p-2.5 text-right font-mono font-bold text-slate-700">${u_curva_total_rel.toFixed(5)}</td>
-                <td class="border border-slate-300 p-2.5 text-right font-bold text-indigo-600">${porc(var_curva_tot)}</td>
-            </tr>
-            <tr class="hover:bg-slate-50 transition">
-                <td class="border border-slate-300 p-2.5 text-slate-800">5. Trat. Muestra ${pesoMuestra > 0 ? '(Pesada)' : '(Volumen)'}${usaVolFinalMuestra ? ' + Aforo' : ''}</td>
-                <td class="border border-slate-300 p-2.5 text-center font-bold text-emerald-600">Tipo B</td>
-                <td class="border border-slate-300 p-2.5 text-right font-mono text-slate-600">${pesoMuestra > 0 ? pesoMuestra + ' g' : alicuotaMuestra + ' mL'}</td>
-                <td class="border border-slate-300 p-2.5 text-right font-mono font-bold text-slate-700">${u_muestra_rel.toFixed(5)}</td>
-                <td class="border border-slate-300 p-2.5 text-right font-bold text-indigo-600">${porc(Math.pow(u_muestra_rel, 2))}</td>
-            </tr>
-            <tr class="hover:bg-slate-50 bg-slate-50/60 transition">
-                <td class="border border-slate-300 p-2.5 text-slate-800">6. Estandarización del Titulante ${estandarizacionInfo.existe ? `<span class="text-xs text-purple-600 font-semibold">(${estandarizacionInfo.tabs.length} titulante${estandarizacionInfo.tabs.length > 1 ? 's' : ''})</span>` : '<span class="text-xs text-slate-400 font-normal">(sin datos)</span>'}</td>
-                <td class="border border-slate-300 p-2.5 text-center font-bold text-emerald-600">Tipo B</td>
-                <td class="border border-slate-300 p-2.5 text-right font-mono text-slate-600">${estandarizacionInfo.existe ? 'Triplicado' : 'N/A'}</td>
-                <td class="border border-slate-300 p-2.5 text-right font-mono font-bold text-slate-700">${u_estandarizacion_rel.toFixed(5)}</td>
-                <td class="border border-slate-300 p-2.5 text-right font-bold text-indigo-600">${porc(var_estandarizacion)}</td>
-            </tr>
-        `;
+        tbody.innerHTML = filas.map((f, i) => `
+            <tr class="hover:bg-slate-50 ${i % 2 ? 'bg-slate-50/60 ' : ''}transition">
+                <td class="border border-slate-300 p-2.5 text-slate-800">${f.html}</td>
+                <td class="border border-slate-300 p-2.5 text-center font-bold ${f.tipo === 'Tipo A' ? 'text-blue-600' : 'text-emerald-600'}">${f.tipo}</td>
+                <td class="border border-slate-300 p-2.5 text-right font-mono text-slate-600">${f.detalle}</td>
+                <td class="border border-slate-300 p-2.5 text-right font-mono font-bold text-slate-700">${f.uRel.toFixed(5)}</td>
+                <td class="border border-slate-300 p-2.5 text-right font-bold text-indigo-600">${porc(f.varSq)}</td>
+            </tr>`).join('');
     }
 
     if (document.getElementById('val-uc-total')) {
@@ -473,15 +654,8 @@ window.calcularIncertidumbre = function () {
     }
 
     // --- 8. RENDERIZAR GRÁFICO DE ANILLO (DOUGHNUT CHART) ---
-    const varianzasComponentes = [
-        Math.pow(u_A_rel, 2),
-        Math.pow(u_patron_rel, 2),
-        var_prep_trab,
-        var_curva_tot,
-        Math.pow(u_muestra_rel, 2),
-        var_estandarizacion
-    ];
-    window.renderizarGraficoIncertidumbre(varianzasComponentes);
+    const varianzasComponentes = filas.map(f => f.varSq);
+    window.renderizarGraficoIncertidumbre(varianzasComponentes, filas.map(f => f.corto), filas.map(f => f.color));
 
     // --- 9. PERSISTIR EL RESULTADO COMO DATOS (no como HTML/canvas) ---
     // El informe (informe-datos.js) lee esto directamente en vez de recalcular
@@ -491,51 +665,15 @@ window.calcularIncertidumbre = function () {
     // incertidumbre de cada elemento.
     if (window.datosGlobales && window.elementoActivo && window.datosGlobales[window.elementoActivo]) {
         window.datosGlobales[window.elementoActivo].resultadoIncertidumbre = {
-            filas: [
-                {
-                    fuente: `1. Repetibilidad LCM (${analistaSel})`,
-                    tipo: 'Tipo A',
-                    detalle: `s = ${(lcmStats.desviacion || 0).toFixed(4)}`,
-                    uRel: u_A_rel,
-                    varSq: Math.pow(u_A_rel, 2)
-                },
-                {
-                    fuente: '2. Patrón Certificable (CRM)',
-                    tipo: 'Tipo B',
-                    detalle: usaPatron ? '2 / 1000' : 'N/A',
-                    uRel: u_patron_rel,
-                    varSq: Math.pow(u_patron_rel, 2)
-                },
-                {
-                    fuente: `3. Prep. Patrón Trabajo ${esRAS ? '(Suma 3 Cationes)' : (pesoTrab > 0 ? '(Pesada)' : '(Volumen)')}`,
-                    tipo: 'Tipo B',
-                    detalle: pesoTrab > 0 ? `${pesoTrab} g` : `${alicuotaTrab} mL`,
-                    uRel: u_prep_trabajo_rel,
-                    varSq: var_prep_trab
-                },
-                {
-                    fuente: `4. Curva de Calibración ${esRAS ? '(Suma 3 Cationes)' : '(Prep + Regresión)'}`,
-                    tipo: 'Tipo B',
-                    detalle: `s_res = ${s_res.toFixed(4)}`,
-                    uRel: u_curva_total_rel,
-                    varSq: var_curva_tot
-                },
-                {
-                    fuente: `5. Trat. Muestra ${pesoMuestra > 0 ? '(Pesada)' : '(Volumen)'}${usaVolFinalMuestra ? ' + Aforo' : ''}`,
-                    tipo: 'Tipo B',
-                    detalle: pesoMuestra > 0 ? `${pesoMuestra} g` : `${alicuotaMuestra} mL`,
-                    uRel: u_muestra_rel,
-                    varSq: Math.pow(u_muestra_rel, 2)
-                },
-                {
-                    fuente: `6. Estandarización del Titulante ${estandarizacionInfo.existe ? `(${estandarizacionInfo.tabs.length} titulante${estandarizacionInfo.tabs.length > 1 ? 's' : ''})` : '(sin datos)'}`,
-                    tipo: 'Tipo B',
-                    detalle: estandarizacionInfo.existe ? 'Triplicado' : 'N/A',
-                    uRel: u_estandarizacion_rel,
-                    varSq: var_estandarizacion
-                }
-            ],
+            filas: filas.map(f => ({
+                fuente: f.txt,
+                tipo: f.tipo,
+                detalle: f.detalle,
+                uRel: f.uRel,
+                varSq: f.varSq
+            })),
             varianzas: varianzasComponentes,
+            colores: filas.map(f => f.color),
             var_total,
             u_c_total,
             u_expandida_rel,
@@ -548,7 +686,7 @@ window.calcularIncertidumbre = function () {
 /**
  * Renderiza o actualiza el Gráfico de Anillo de contribución a la varianza usando Chart.js
  */
-window.renderizarGraficoIncertidumbre = function (varianzas) {
+window.renderizarGraficoIncertidumbre = function (varianzas, etiquetas, colores) {
     const canvasElement = document.getElementById('chartIncertidumbre');
     if (!canvasElement) return;
     const ctx = canvasElement.getContext('2d');
@@ -560,10 +698,10 @@ window.renderizarGraficoIncertidumbre = function (varianzas) {
     window.chartIncertidumbreInstance = new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: ['1. Tipo A (LCM)', '2. Patrón (CRM)', '3. Prep. Trabajo', '4. Curva Calib.', '5. Toma Muestra', '6. Estandarización'],
+            labels: etiquetas || ['1. Tipo A (LCM)', '2. Patrón (CRM)', '3. Prep. Trabajo', '4. Curva Calib.', '5. Toma Muestra', '6. Estandarización'],
             datasets: [{
                 data: varianzas,
-                backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#a855f7'],
+                backgroundColor: colores || ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#a855f7'],
                 borderWidth: 2,
                 borderColor: '#ffffff',
                 hoverOffset: 4
@@ -611,8 +749,7 @@ window.guardarConfigIncertidumbre = function () {
 
     // 2. Guardar los Inputs numéricos y Selects
     const idsCampos = [
-        'inpAlicuotaTrabajo', 'inpPesoTrabajo', 'selInstTrabajo',
-        'selVolFinalTrabajo', 'selInstCurva', 'selVolFinalCurva',
+        'selInstCurva', 'selVolFinalCurva',
         'selAnalistaTipoA', 'inpAlicuotaMuestra', 'inpPesoMuestra',
         'selInstMuestra', 'selVolFinalMuestra'
     ];
@@ -621,6 +758,12 @@ window.guardarConfigIncertidumbre = function () {
         const el = document.getElementById(id);
         if (el) config[id] = el.value;
     });
+
+    // 3. Guardar las preparaciones del patrón de trabajo (lista dinámica)
+    // Solo si el array en memoria pertenece a este elemento (evita copiar el de otro al cambiar).
+    if (Array.isArray(window.preparacionesTrabajo) && window._prepElemento === window.elementoActivo) {
+        config.preparaciones = JSON.parse(JSON.stringify(window.preparacionesTrabajo));
+    }
 
     // Guardar en memoria global de la app
     window.datosGlobales[window.elementoActivo].configIncertidumbre = config;
@@ -650,6 +793,9 @@ window.cargarConfigIncertidumbre = function () {
         } catch (e) { }
     }
 
+    // Preparaciones del patrón de trabajo: se restauran (o se dejan en 1 por defecto) siempre
+    window.inicializarPreparacionesDesdeConfig(config);
+
     // Si nunca se ha configurado este elemento, dejamos los valores por defecto del HTML
     if (!config) return;
 
@@ -667,8 +813,7 @@ window.cargarConfigIncertidumbre = function () {
 
     // 2. Restaurar Inputs numéricos y Selects
     const idsCampos = [
-        'inpAlicuotaTrabajo', 'inpPesoTrabajo', 'selInstTrabajo',
-        'selVolFinalTrabajo', 'selInstCurva', 'selVolFinalCurva',
+        'selInstCurva', 'selVolFinalCurva',
         'selAnalistaTipoA', 'inpAlicuotaMuestra', 'inpPesoMuestra',
         'selInstMuestra', 'selVolFinalMuestra'
     ];

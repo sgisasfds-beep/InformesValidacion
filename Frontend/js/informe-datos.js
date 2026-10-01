@@ -645,7 +645,7 @@ window.guardarMetadatosYCompilar = function () {
                         labels: (incData.filas || []).map(f => f.fuente),
                         datasets: [{
                             data: incData.varianzas,
-                            backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#a855f7']
+                            backgroundColor: incData.colores || ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#a855f7']
                         }]
                     },
                     options: {

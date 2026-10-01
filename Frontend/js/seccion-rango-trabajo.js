@@ -149,6 +149,10 @@ window.renderizarRangoTrabajo = function (elementoSeleccionado) {
 
     contenedorRT.classList.remove('hidden');
 
+    if (!window.factoresDilucionRT[elem]) {
+        window.factoresDilucionRT[elem] = dataElem.rt.raw.map(item => parseFloat(item.factor) || 1.0);
+    }
+
     // Inicializar o recuperar factores de dilución guardados
     if (!window.factoresDilucionRT[elem]) {
         window.factoresDilucionRT[elem] = dataElem.rt.raw.map(() => 1.0);
