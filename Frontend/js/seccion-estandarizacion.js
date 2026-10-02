@@ -127,9 +127,9 @@ window.crearBloqueVacio = function (id) {
         fecha: '',
         volMuestra: '', // Campo para el volumen de muestra a nivel de bloque
         replicas: [
-            { peso: '', volSlnValorada: '', volTitulante: '', fd: '1' },
-            { peso: '', volSlnValorada: '', volTitulante: '', fd: '1' },
-            { peso: '', volSlnValorada: '', volTitulante: '', fd: '1' }
+            { peso: '', volSlnValorada: '', volTitulante: '', fd: '1', nSlnValManual: '' },
+            { peso: '', volSlnValorada: '', volTitulante: '', fd: '1', nSlnValManual: '' },
+            { peso: '', volSlnValorada: '', volTitulante: '', fd: '1', nSlnValManual: '' }
         ]
     };
 };
@@ -174,6 +174,29 @@ window.obtenerReplicaMismaFila = function (parametro, rolBuscado, bloqueIdx, rep
     return pestanaOrigen.estandarizaciones[bloqueIdx]?.replicas[replicaIdx] || null;
 };
 
+/**
+ * Concentración de la solución valorada escrita a mano por el usuario en una
+ * réplica (solo se usa en pestañas con rol Titulante cuando no se encontró
+ * el valor automático). Devuelve null si está vacía o no es mayor que cero.
+ */
+window.leerNManualSlnVal = function (r) {
+    const v = parseFloat(r?.nSlnValManual);
+    return (v > 0) ? v : null;
+};
+
+/**
+ * Indica si el cálculo de la concentración del titulante necesita la
+ * concentración de la solución valorada. En CIC, Acidez Intercambiable y
+ * Aluminio Intercambiable con NaOH el titulante se calcula solo con peso y
+ * volumen, así que ahí no se pide el valor manual.
+ */
+window.parametroUsaNSlnValTitulante = function (parametro, pestana) {
+    const p = (parametro || '').toUpperCase();
+    if (p === 'CAPACIDAD DE INTERCAMBIO CATIONICO' || p === 'ACIDEZ INTERCAMBIABLE') return false;
+    if (p === 'ALUMINIO INTERCAMBIABLE') return (pestana?.reactivoAluminio || 'NaOH') === 'HCl';
+    return true;
+};
+
 window.resolverCalculosFila = function (parametro, pestana, replicaActual, bloque, bloqueIdx, replicaIdx) {
     const rolActual = pestana?.rol;
     const formulas = window.FORMULAS_PARAMETROS[parametro.toUpperCase()] || window.FORMULAS_PARAMETROS['CLORUROS'];
@@ -181,6 +204,7 @@ window.resolverCalculosFila = function (parametro, pestana, replicaActual, bloqu
     let nSlnVal = null;
     let nTit = null;
     let resultadoFinal = null;
+    let requiereManualSlnVal = false;
 
     // 1. Normalidad Solución Valorada
     if (rolActual === 'Solución Valorada') {
@@ -201,6 +225,13 @@ window.resolverCalculosFila = function (parametro, pestana, replicaActual, bloqu
         if (nSlnVal === null) {
             nSlnVal = formulas.calcularNSlnVal(replicaActual);
         }
+
+        // Si no se encontró la concentración de la solución valorada, el usuario
+        // puede escribirla manualmente (solo en la pestaña Titulante).
+        if (nSlnVal === null && rolActual === 'Titulante' && window.parametroUsaNSlnValTitulante(parametro, pestana)) {
+            requiereManualSlnVal = true;
+            nSlnVal = window.leerNManualSlnVal(replicaActual);
+        }
     }
 
     // 2. Normalidad Titulante
@@ -209,7 +240,8 @@ window.resolverCalculosFila = function (parametro, pestana, replicaActual, bloqu
     } else {
         const replicaTit = window.obtenerReplicaMismaFila(parametro, 'Titulante', bloqueIdx, replicaIdx);
         if (replicaTit) {
-            const nSlnValRef = formulas.calcularNSlnVal(replicaTit) || nSlnVal;
+            // Si la réplica del titulante usó una concentración manual, se respeta aquí también
+            const nSlnValRef = formulas.calcularNSlnVal(replicaTit) || window.leerNManualSlnVal(replicaTit) || nSlnVal;
             nTit = formulas.calcularNTitulante(replicaTit, nSlnValRef, bloque, pestana);
         }
     }
@@ -223,7 +255,7 @@ window.resolverCalculosFila = function (parametro, pestana, replicaActual, bloqu
         resultadoFinal = formulas.calcularPatron(replicaActual, nTit, bloque, nSlnVal);
     }
 
-    return { nSlnVal, nTit, resultadoFinal };
+    return { nSlnVal, nTit, resultadoFinal, requiereManualSlnVal };
 };
 
 window.cambiarReactivoAcidezEst = function (tabId, reactivo) {
@@ -427,14 +459,24 @@ window.renderizarBloquesEst = function (parametro, pestana) {
             const txtNormSlnVal = (pestana.rol === 'Solución Valorada') ? 'N/A' : fmt(res.nSlnVal);
             const txtNormTit = (pestana.rol === 'Titulante') ? 'N/A' : fmt(res.nTit);
 
+            // Si no se encontró la concentración de la solución valorada (pestaña Titulante),
+            // la celda se vuelve un campo para escribirla manualmente.
+            const celdaNSlnVal = res.requiereManualSlnVal
+                ? `<td class="border border-slate-400 p-0 bg-amber-50" title="No se encontró la concentración de la solución valorada. Escríbela manualmente.">
+                       <input type="number" step="any" min="0" value="${r.nSlnValManual ?? ''}" placeholder="Manual"
+                           class="w-full h-full text-center p-1 outline-none bg-amber-50 focus:bg-amber-100 font-mono text-[11px] text-amber-900 placeholder:text-amber-500"
+                           onchange="window.actualizarReplicaEst(${bloque.id}, ${rIdx}, 'nSlnValManual', this.value)">
+                   </td>`
+                : `<td class="border border-slate-400 p-1 bg-slate-100 text-center text-slate-700 font-mono text-[11px]">${txtNormSlnVal}</td>`;
+
             return `
             <tr>
                 ${rIdx === 0 ? `<td rowspan="3" class="border border-slate-400 p-1 font-bold text-center bg-white">${bloque.id}</td>` : ''}
                 <td class="border border-slate-400 p-0"><input type="number" step="any" value="${r.peso}" class="w-full h-full text-center p-1 outline-none focus:bg-blue-50" onchange="window.actualizarReplicaEst(${bloque.id}, ${rIdx}, 'peso', this.value)"></td>
                 <td class="border border-slate-400 p-0"><input type="number" step="any" value="${r.volSlnValorada}" class="w-full h-full text-center p-1 outline-none focus:bg-blue-50" onchange="window.actualizarReplicaEst(${bloque.id}, ${rIdx}, 'volSlnValorada', this.value)"></td>
                 
-                <!-- Normalidad Solución Valorada -->
-                <td class="border border-slate-400 p-1 bg-slate-100 text-center text-slate-700 font-mono text-[11px]">${txtNormSlnVal}</td>
+                <!-- Normalidad Solución Valorada (editable a mano si no se encontró) -->
+                ${celdaNSlnVal}
                 
                 <td class="border border-slate-400 p-0"><input type="number" step="any" value="${r.volTitulante}" class="w-full h-full text-center p-1 outline-none focus:bg-blue-50" onchange="window.actualizarReplicaEst(${bloque.id}, ${rIdx}, 'volTitulante', this.value)"></td>
                 

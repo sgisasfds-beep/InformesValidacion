@@ -1,4 +1,5 @@
 <section id="sec-limites" class="space-y-6 animate-fade-in">
+    <!-- Encabezado -->
     <div class="flex justify-between items-center bg-white p-4 rounded-lg border border-slate-300 shadow-sm">
         <div>
             <h2 class="text-xl font-bold text-slate-800">Límites de Detección y Cuantificación</h2>
@@ -11,6 +12,8 @@
     </div>
     
     <div id="contenidoElemento" class="space-y-6 hidden">
+        
+        <!-- Tarjetas de Estadísticas Globales (COMPARTIDAS para Normal y Titulado) -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-300">
                 <div class="text-xs text-slate-500 font-bold uppercase tracking-wider">LOD Estimado (3·s_MB)</div>
@@ -30,11 +33,75 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300 flex flex-col">
-                <h3 class="font-bold text-slate-800 mb-3 text-base">Resumen Estadístico del Ensayo</h3>
-                <div class="overflow-x-auto flex-1">
-                    <table class="w-full text-sm text-center border-collapse border border-slate-300 h-full">
+        <!-- ========================================== -->
+        <!-- VISTA NORMAL (Instrumental/Concentración)  -->
+        <!-- ========================================== -->
+        <div id="vista-limites-normal" class="space-y-6 block">
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <!-- Resumen Estadístico Normal -->
+                <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300 flex flex-col">
+                    <h3 class="font-bold text-slate-800 mb-3 text-base">Resumen Estadístico del Ensayo</h3>
+                    <div class="overflow-x-auto flex-1">
+                        <table class="w-full text-sm text-center border-collapse border border-slate-300 h-full">
+                            <thead>
+                                <tr class="bg-slate-100 text-slate-700 font-bold border-b border-slate-300">
+                                    <th class="border border-slate-300 p-2.5">Control</th>
+                                    <th class="border border-slate-300 p-2.5">Grupo</th>
+                                    <th class="border border-slate-300 p-2.5">Promedio (x̄)</th>
+                                    <th class="border border-slate-300 p-2.5">Desviación (s)</th>
+                                    <th class="border border-slate-300 p-2.5">% Coef. Variación (%CV)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaResultados" class="divide-y divide-slate-300"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Datos Brutos Normal -->
+                <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300 flex flex-col">
+                    <h3 class="font-bold text-slate-800 mb-3 text-base">Datos Brutos por Analista (10 Réplicas)</h3>
+                    <div class="overflow-x-auto flex-1">
+                        <table class="w-full text-sm text-center border-collapse border border-slate-300">
+                            <thead>
+                                <tr class="bg-slate-100 text-slate-700 font-bold border-b border-slate-300">
+                                    <th class="border border-slate-300 p-1.5" rowspan="2">Ensayo</th>
+                                    <th id="th-mb" class="border border-slate-300 p-1.5 bg-slate-200" colspan="2">Blancos (MB)</th>
+                                    <th class="border border-slate-300 p-1.5 bg-indigo-100" colspan="2">Límites (LCM)</th>
+                                </tr>
+                                <tr class="bg-slate-50 text-slate-700 font-bold border-b border-slate-300">
+                                    <th class="border border-slate-300 p-1.5">Analista 1</th>
+                                    <th id="th-mb-a2" class="border border-slate-300 p-1.5">Analista 2</th>
+                                    <th class="border border-slate-300 p-1.5">Analista 1</th>
+                                    <th class="border border-slate-300 p-1.5">Analista 2</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaDatosBrutos" class="divide-y divide-slate-300"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300">
+                    <h3 class="font-bold mb-3 text-slate-800 text-base">Dispersión Visual de Blancos de Método (MB)</h3>
+                    <canvas id="chartMB" class="max-h-72"></canvas>
+                </div>
+                <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300">
+                    <h3 class="font-bold mb-3 text-slate-800 text-base">Dispersión Visual de Límites (LCM)</h3>
+                    <canvas id="chartLCM" class="max-h-72"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- VISTA TITULADOS (Volumetría)               -->
+        <!-- ========================================== -->
+        <div id="vista-limites-titulado" class="space-y-6 hidden">
+            <!-- Tabla de Resumen Estadístico (Comparte formato, pero tiene ID distinto para evitar conflictos en JS) -->
+            <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300">
+                <h3 class="font-bold text-slate-800 mb-3 text-base">Resumen Estadístico del Ensayo (Calculado a partir de Concentración)</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-center border-collapse border border-slate-300">
                         <thead>
                             <tr class="bg-slate-100 text-slate-700 font-bold border-b border-slate-300">
                                 <th class="border border-slate-300 p-2.5">Control</th>
@@ -44,44 +111,32 @@
                                 <th class="border border-slate-300 p-2.5">% Coef. Variación (%CV)</th>
                             </tr>
                         </thead>
-                        <tbody id="tablaResultados" class="divide-y divide-slate-300"></tbody>
+                        <tbody id="tablaResultadosTitulados" class="divide-y divide-slate-300"></tbody>
                     </table>
                 </div>
             </div>
 
-            <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300 flex flex-col">
-                <h3 class="font-bold text-slate-800 mb-3 text-base">Datos Brutos por Analista (10 Réplicas)</h3>
-                <div class="overflow-x-auto flex-1">
+            <!-- Tabla de Datos Volumétricos Brutos -->
+            <!-- En volumetría es mejor tabular hacia abajo dado el número de variables -->
+            <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300">
+                <h3 class="font-bold text-slate-800 mb-3 text-base">Datos Brutos de Titulación (Blancos y LCM)</h3>
+                <div class="overflow-x-auto">
                     <table class="w-full text-sm text-center border-collapse border border-slate-300">
                         <thead>
                             <tr class="bg-slate-100 text-slate-700 font-bold border-b border-slate-300">
-                                <th class="border border-slate-300 p-1.5" rowspan="2">Ensayo</th>
-                                <th id="th-mb" class="border border-slate-300 p-1.5 bg-slate-200" colspan="2">Blancos (MB)</th>
-                                <th class="border border-slate-300 p-1.5 bg-indigo-100" colspan="2">Límites (LCM)</th>
-                            </tr>
-                            <tr class="bg-slate-50 text-slate-700 font-bold border-b border-slate-300">
-                                <th class="border border-slate-300 p-1.5">Analista 1</th>
-                                <th id="th-mb-a2" class="border border-slate-300 p-1.5">Analista 2</th>
-                                <th class="border border-slate-300 p-1.5">Analista 1</th>
-                                <th class="border border-slate-300 p-1.5">Analista 2</th>
+                                <th class="border border-slate-300 p-2 bg-slate-200">Control</th>
+                                <th class="border border-slate-300 p-2 bg-slate-200">Analista</th>
+                                <th class="border border-slate-300 p-2 bg-slate-200">Réplica</th>
+                                <th class="border border-slate-300 p-2">Vol. Muestra (mL)</th>
+                                <th class="border border-slate-300 p-2">Vol. Blanco (mL)</th>
+                                <th class="border border-slate-300 p-2">Vol. Titulante (mL)</th>
+                                <th class="border border-slate-300 p-2">Concentración Titulante (N)</th>
+                                <th class="border border-slate-300 p-2 bg-indigo-50">Concentración Calculada</th>
                             </tr>
                         </thead>
-                        <tbody id="tablaDatosBrutos" class="divide-y divide-slate-300">
-                            
-                        </tbody>
+                        <tbody id="tablaDatosTitulados" class="divide-y divide-slate-300"></tbody>
                     </table>
                 </div>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300">
-                <h3 class="font-bold mb-3 text-slate-800 text-base">Dispersión Visual de Blancos de Método (MB)</h3>
-                <canvas id="chartMB" class="max-h-72"></canvas>
-            </div>
-            <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300">
-                <h3 class="font-bold mb-3 text-slate-800 text-base">Dispersión Visual de Límites (LCM)</h3>
-                <canvas id="chartLCM" class="max-h-72"></canvas>
             </div>
         </div>
     </div>

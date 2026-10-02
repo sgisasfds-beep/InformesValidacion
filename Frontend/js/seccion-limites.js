@@ -1,7 +1,10 @@
 /**
  * SECCIÓN 2 - LÍMITES DE DETECCIÓN Y CUANTIFICACIÓN
  * -----------------------------------------------------------------------
- * renderizarLimites: tabla y gráficos de blancos de método (MB) y LCM.
+ * renderizarLimites: punto de entrada. Actualiza las tarjetas globales y
+ *   decide qué vista mostrar (normal o titulados).
+ * renderizarLimitesFisicoquimico: tabla y gráficos de blancos de método (MB) y LCM.
+ * renderizarLimitesTitulados: tablas de resumen y datos brutos de volumetría.
  * Depende de core-estado.js y core-navegacion.js.
  * -----------------------------------------------------------------------
  */
@@ -18,7 +21,29 @@ window.renderizarLimites = function () {
 
     // Fisicoquímico: un único blanco (Analista 1). El backend lo indica con mb.solo_analista_1.
     const soloMBA1 = data.mb.solo_analista_1 === true;
+    const esTitulado = data.es_titulado === true;
 
+    const vistaNormal = document.getElementById('vista-limites-normal');
+    const vistaTitulada = document.getElementById('vista-limites-titulado');
+
+    if (esTitulado) {
+        if (vistaNormal) vistaNormal.classList.add('hidden');
+        if (vistaTitulada) vistaTitulada.classList.remove('hidden');
+
+        window.renderizarLimitesTitulados(data, soloMBA1);
+
+    } else {
+        if (vistaNormal) vistaNormal.classList.remove('hidden');
+        if (vistaTitulada) vistaTitulada.classList.add('hidden');
+
+        window.renderizarLimitesFisicoquimico(data, soloMBA1);
+    }
+};
+
+// ----------------------------------------------------------------------
+// VISTA NORMAL (Instrumental / Concentración)
+// ----------------------------------------------------------------------
+window.renderizarLimitesFisicoquimico = function (data, soloMBA1) {
     const filaStats = (ctrl, grupo, st, destacada) => `
         <tr class="${destacada ? 'bg-blue-50/40 font-bold' : 'hover:bg-slate-50'}"><td class="border border-slate-300 p-2 ${destacada ? '' : 'font-semibold bg-slate-50'}">${ctrl}</td><td class="border border-slate-300 p-2">${grupo}</td><td class="border border-slate-300 p-2 font-mono">${st.promedio}</td><td class="border border-slate-300 p-2 font-mono">${st.desviacion}</td><td class="border border-slate-300 p-2 font-mono">${st.cv}%</td></tr>`;
 
@@ -90,4 +115,58 @@ window.renderizarLimites = function () {
         },
         options: { responsive: true, scales: { x: { title: { display: true, text: 'Ensayos' }, min: 0, max: 11 } } }
     });
+};
+
+// ----------------------------------------------------------------------
+// VISTA TITULADOS (Volumetría)
+// ----------------------------------------------------------------------
+window.renderizarLimitesTitulados = function (data, soloMBA1) {
+    const filaStats = (ctrl, grupo, st, destacada) => `
+        <tr class="${destacada ? 'bg-blue-50/40 font-bold' : 'hover:bg-slate-50'}">
+            <td class="border border-slate-300 p-2 ${destacada ? '' : 'font-semibold bg-slate-50'}">${ctrl}</td>
+            <td class="border border-slate-300 p-2">${grupo}</td>
+            <td class="border border-slate-300 p-2 font-mono">${st.promedio}</td>
+            <td class="border border-slate-300 p-2 font-mono">${st.desviacion}</td>
+            <td class="border border-slate-300 p-2 font-mono">${st.cv}%</td>
+        </tr>`;
+
+    // Resumen estadístico (calculado a partir de la concentración)
+    const tbResumen = document.getElementById('tablaResultadosTitulados');
+    if (tbResumen) {
+        tbResumen.innerHTML =
+            filaStats('MB', 'Analista 1', data.mb.analista_1, false) +
+            (soloMBA1 ? '' : filaStats('MB', 'Analista 2', data.mb.analista_2, false) + filaStats('MB', 'Global', data.mb.global, true)) +
+            filaStats('LCM', 'Analista 1', data.lcm.analista_1, false) +
+            filaStats('LCM', 'Analista 2', data.lcm.analista_2, false) +
+            filaStats('LCM', 'Global', data.lcm.global, true);
+    }
+
+    // Datos brutos de titulación
+    const tbBrutos = document.getElementById('tablaDatosTitulados');
+    if (!tbBrutos) return;
+
+    const fmt = (v, dec = 4) => (v === undefined || v === null || isNaN(v)) ? '-' : Number(v).toFixed(dec);
+
+    const filasDe = (ctrl, raw) => {
+        const contador = {};   // la réplica reinicia por analista
+        return (raw || [])
+            .filter(d => !(soloMBA1 && ctrl === 'MB' && d.analista !== 'Analista 1'))
+            .map(d => {
+                contador[d.analista] = (contador[d.analista] || 0) + 1;
+                const atipico = d.es_atipico ? 'bg-amber-50 text-amber-700' : '';
+                return `
+                <tr class="hover:bg-slate-50 ${atipico}" ${d.es_atipico ? 'title="Valor atípico (Grubbs)"' : ''}>
+                    <td class="border border-slate-300 p-1.5 font-bold bg-slate-50">${ctrl}</td>
+                    <td class="border border-slate-300 p-1.5">${d.analista}</td>
+                    <td class="border border-slate-300 p-1.5">${contador[d.analista]}</td>
+                    <td class="border border-slate-300 p-1.5 font-mono">${fmt(d.v_muestra, 2)}</td>
+                    <td class="border border-slate-300 p-1.5 font-mono">${fmt(d.v_blanco, 2)}</td>
+                    <td class="border border-slate-300 p-1.5 font-mono">${fmt(d.v_titulante, 2)}</td>
+                    <td class="border border-slate-300 p-1.5 font-mono">${fmt(d.n_titulante, 4)}</td>
+                    <td class="border border-slate-300 p-1.5 font-mono font-medium text-indigo-700 bg-indigo-50/50">${fmt(d.valor, 4)}</td>
+                </tr>`;
+            }).join('');
+    };
+
+    tbBrutos.innerHTML = filasDe('MB', data.mb.raw) + filasDe('LCM', data.lcm.raw);
 };

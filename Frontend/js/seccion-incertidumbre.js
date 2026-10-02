@@ -403,109 +403,90 @@ window.calcularIncertidumbre = function () {
         return { conc: String(p.conc ?? '').trim(), alic, peso, volFinal, uRel, varSq: Math.pow(uRel, 2) };
     });
 
-    // --- 4. INCERTIDUMBRE TIPO B: INTERPOLACIÓN DE LA CURVA DE CALIBRACIÓN ---
     let u_curva_total_rel = 0;
     let s_res = 0;
 
     if (linData && linData.tabla && linData.tabla.length > 1) {
-        // A) Parámetros promedio globales de la curva
-        const p_curvas = (linData.curvas_raw && linData.curvas_raw.length > 0) ? linData.curvas_raw.length : 3;
+        // A) Parámetros de la curva
         const m_prom = linData.stats?.promedio_pendientes_raw || linData.stats?.promedio_pendientes || 1;
         const b_prom = linData.stats?.intercepto_raw || linData.stats?.intercepto || 0;
 
-        // B) Concentración alta (último punto) y baja (primer punto)
-        const pt_high = linData.tabla[linData.tabla.length - 1];
-        const pt_low = linData.tabla[0];
-        const C_alta = pt_high.concentracion;
-        const C_baja = pt_low.concentracion;
-
-        // C) Concentración media (Cm)
+        // B) Puntos y concentraciones extremas
         const n_puntos = linData.tabla.length;
-        const sum_conc = linData.tabla.reduce((acc, pt) => acc + pt.concentracion, 0);
-        const C_media = sum_conc / n_puntos;
+        const C_alta = linData.tabla[n_puntos - 1].concentracion;
+        const C_baja = linData.tabla[0].concentracion;
 
-        // D) Número total de datos (N_total) e Intensidad media (Int media)
+        // C) Conteo total de datos (N) y Concentración Media de la curva (x_bar)
         let N_total = 0;
-        let sum_intensidades = 0;
+        let sum_conc_total = 0;
 
         linData.tabla.forEach(pt => {
-            const senales = (pt.señales && Array.isArray(pt.señales) && pt.señales.length > 0) 
-                ? pt.señales 
+            const senales = (pt.señales && Array.isArray(pt.señales) && pt.señales.length > 0)
+                ? pt.señales
                 : [pt.promedio];
-            senales.forEach(sig => {
+            senales.forEach(() => {
                 N_total++;
-                sum_intensidades += sig;
+                sum_conc_total += pt.concentracion;
             });
         });
 
-        const Int_media = N_total > 0 ? (sum_intensidades / N_total) : 0;
+        const x_media = N_total > 0 ? (sum_conc_total / N_total) : 0;
 
-        // E) Evaluación de cada señal para Desviación Estándar Residual (s_res)
-        let sumatoria_cuadrados = 0;
+        // D) Sumatoria de Cuadrados de Residuos en Absorbancia (SS_res)
+        let sumatoria_cuadrados_res = 0;
 
         linData.tabla.forEach(pt => {
-            const senales = (pt.señales && Array.isArray(pt.señales) && pt.señales.length > 0) 
-                ? pt.señales 
+            const senales = (pt.señales && Array.isArray(pt.señales) && pt.señales.length > 0)
+                ? pt.señales
                 : [pt.promedio];
-            
-            // Concentración real del punto
+
             const C_real = pt.concentracion;
             const Int_calc = (m_prom * C_real) + b_prom;
 
             senales.forEach(sig => {
-                const int_diff = sig - Int_calc;
-                sumatoria_cuadrados += (int_diff * int_diff);
+                const diff = sig - Int_calc;
+                sumatoria_cuadrados_res += (diff * diff);
             });
         });
 
         const df_res = (N_total - 2) > 0 ? (N_total - 2) : 1;
-        s_res = Math.sqrt(sumatoria_cuadrados / df_res);
+        s_res = Math.sqrt(sumatoria_cuadrados_res / df_res);
 
-        // F) Sumatoria de cuadrados de concentración (Ci - Cm)^2 y m^2 * sumatoria
-        let sumatoria_cua_conc = 0;
+        // E) Sumatoria de Cuadrados de Concentración Sxx = SUM((Xi - X_bar)^2)
+        let S_xx = 0;
 
         linData.tabla.forEach(pt => {
-            const senales = (pt.señales && Array.isArray(pt.señales) && pt.señales.length > 0) 
-                ? pt.señales 
+            const senales = (pt.señales && Array.isArray(pt.señales) && pt.señales.length > 0)
+                ? pt.señales
                 : [pt.promedio];
-            
-            const Ci_Cm = pt.concentracion - C_media;
-            const Ci_Cm2 = Ci_Cm * Ci_Cm;
-            sumatoria_cua_conc += (Ci_Cm2 * senales.length);
+
+            const diff_x = pt.concentracion - x_media;
+            S_xx += (diff_x * diff_x) * senales.length;
         });
 
-        const m2_sumatoria_cua_conc = Math.pow(m_prom, 2) * sumatoria_cua_conc;
-
-        // G) Cálculos para punto alto y punto bajo (Int Pr, Int res 2)
-        const Int_Pr_alta = pt_high.promedio;
-        const diff_alta = Int_Pr_alta - Int_media;
-        const Int_res2_alta = diff_alta * diff_alta;
-
-        const Int_Pr_baja = pt_low.promedio;
-        const diff_baja = Int_Pr_baja - Int_media;
-        const Int_res2_baja = diff_baja * diff_baja;
-
-        // H) Incertidumbre estándar individual de punto alto y bajo
+        // F) Incertidumbre Estándar en Concentración (s_x0 = s_res / m)
         const denom_m = Math.abs(m_prom) > 0 ? Math.abs(m_prom) : 1;
-        const div_m2_Sxx = m2_sumatoria_cua_conc > 0 ? m2_sumatoria_cua_conc : 1;
+        const s_x0 = s_res / denom_m;
+        const n_replicas_muestra = 3; // Réplicas de lectura de muestra en el equipo
 
-        const u_interp_high = (s_res / denom_m) * Math.sqrt(
-            (1 / p_curvas) + (1 / N_total) + (Int_res2_alta / div_m2_Sxx)
+        // G) Incertidumbres individuales en extremos
+        const u_interp_high = s_x0 * Math.sqrt(
+            (1 / n_replicas_muestra) + (1 / N_total) + (Math.pow(C_alta - x_media, 2) / S_xx)
         );
 
-        const u_interp_low = (s_res / denom_m) * Math.sqrt(
-            (1 / p_curvas) + (1 / N_total) + (Int_res2_baja / div_m2_Sxx)
+        const u_interp_low = s_x0 * Math.sqrt(
+            (1 / n_replicas_muestra) + (1 / N_total) + (Math.pow(C_baja - x_media, 2) / S_xx)
         );
 
-        // I) Incertidumbre estándar combinada relativa de la interpolación
+        // H) Incertidumbre Relativa Combinada de la Curva
         const promedio_u_interp = (u_interp_high + u_interp_low) / 2;
         const promedio_conc_extremos = (C_alta + C_baja) / 2;
 
-        u_curva_total_rel = promedio_conc_extremos > 0 
-            ? (promedio_u_interp / promedio_conc_extremos) 
+        u_curva_total_rel = promedio_conc_extremos > 0
+            ? (promedio_u_interp / promedio_conc_extremos)
             : 0;
     }
-    
+
 
     // --- 5. INCERTIDUMBRE TIPO B: TOMA DE MUESTRA ---
     const alicuotaMuestra = parseFloat(document.getElementById('inpAlicuotaMuestra')?.value || 10);
@@ -808,7 +789,7 @@ window.cargarConfigIncertidumbre = function () {
     const checkVolFinalMuestra = document.getElementById('checkVolFinalMuestra');
     if (checkVolFinalMuestra && config.checkVolFinalMuestra !== undefined) {
         checkVolFinalMuestra.checked = config.checkVolFinalMuestra;
-        if(typeof window.toggleVolFinalMuestra === 'function') window.toggleVolFinalMuestra();
+        if (typeof window.toggleVolFinalMuestra === 'function') window.toggleVolFinalMuestra();
     }
 
     // 2. Restaurar Inputs numéricos y Selects

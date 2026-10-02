@@ -27,6 +27,7 @@ window.crearGradienteVertical = window.crearGradienteVertical || function (chart
 
 window.chartMuestrasInstancia = null;
 window.matrizActivaMuestra = null;
+window.MATRICES_SUELO = window.MATRICES_SUELO || ['arenoso', 'arcilloso', 'limoso'];
 
 // Nombres amigables para el título de la tabla y mapeo hacia los IDs de pestaña en el HTML
 window.ETIQUETAS_MATRIZ = {
@@ -168,6 +169,8 @@ window.renderizarMuestrasAdicionadas = function (matrizKey) {
     }
 
     // 4. Construir las filas HTML basadas en la estructura del JSON del backend
+    // El duplicado es opcional: si no existe, el backend envía null y se muestra "—"
+    const fmt = (v, suf = '') => (v === null || v === undefined) ? '—' : `${v}${suf}`;
     let filasHTML = '';
     registrosMatriz.forEach((m) => {
         filasHTML += `
@@ -176,10 +179,10 @@ window.renderizarMuestrasAdicionadas = function (matrizKey) {
                 <td class="border border-slate-300 p-2">${m.analista}</td>
                 <td class="border border-slate-300 p-2 font-mono">${m.normal}</td>
                 <td class="border border-slate-300 p-2 font-mono">${m.adicionada}</td>
-                <td class="border border-slate-300 p-2 font-mono">${m.duplicada}</td>
+                <td class="border border-slate-300 p-2 font-mono">${fmt(m.duplicada)}</td>
                 <td class="border border-slate-300 p-2 font-mono text-blue-700 font-semibold">${m.recuperacion_adic}%</td>
-                <td class="border border-slate-300 p-2 font-mono text-indigo-700 font-semibold">${m.recuperacion_dup}%</td>
-                <td class="border border-slate-300 p-2 font-mono text-amber-700 font-semibold">${m.rpd}%</td>
+                <td class="border border-slate-300 p-2 font-mono text-indigo-700 font-semibold">${fmt(m.recuperacion_dup, '%')}</td>
+                <td class="border border-slate-300 p-2 font-mono text-amber-700 font-semibold">${fmt(m.rpd, '%')}</td>
             </tr>
         `;
     });
@@ -213,7 +216,7 @@ window.dibujarGraficoMuestrasMatriz = function (registros) {
     const labels = Array.from({ length: totalReplicas }, (_, i) => `Réplica ${i + 1}`);
 
     const rpdPromedio = labels.map((_, i) => {
-        const valores = [regsA1[i]?.rpd, regsA2[i]?.rpd].filter(v => v !== undefined);
+        const valores = [regsA1[i]?.rpd, regsA2[i]?.rpd].filter(v => v !== undefined && v !== null);
         return valores.length ? (valores.reduce((a, b) => a + Number(b), 0) / valores.length) : null;
     });
 
