@@ -26,7 +26,7 @@ window.TABLA_METROLOGIA = {
         "trans_100_1000": 0.0945, // Según certificado oficial del laboratorio
         "trans_1_10ml": 0.0007
     },
-    balanza: 1.9e-04,  // Balanza Analítica Precisa XB 220 A
+    balanza: 7.8e-04,  // Balanza Analítica Precisa XB 220 A
     delta_T: 3,        // Variación T°C en el laboratorio (±3 °C)
     gamma_H2O: 0.00021 // Coeficiente de dilatación térmica del agua (°C^-1)
 };
@@ -57,24 +57,43 @@ window.obtenerToleranciaAforada = function (tipo, volumen) {
 };
 
 /**
- * Calcula la incertidumbre relativa combinada de un volumen (Aforo + Dilatación Térmica).
- * Si es Transferpipeta, extrae el factor relativo directo de la tabla de calibración.
+ * Incertidumbre estándar de un volumen (alícuota o volumen final), desglosada.
+ *
+ * Vidrio aforado:
+ *   u_aforo = tolerancia / √6                      (distribución triangular)
+ *   u_coef  = (V × ΔT × γ) / √3                    (distribución rectangular), donde
+ *             V × 3 °C × 0.00021 es la dilatación térmica del volumen:
+ *             ΔT = 3 °C de fluctuación de temperatura y γ = 0.00021 °C⁻¹ de coeficiente
+ *             de expansión térmica (TABLA_METROLOGIA.delta_T y gamma_H2O).
+ *   u_abs   = √(u_aforo² + u_coef²)     u_rel = u_abs / V
+ * Transferpipeta: factor relativo directo de la tabla de calibración.
  */
-window.calcUVolumetricaRel = function (volumen, tipoMaterial, instSeleccionado) {
-    if (volumen <= 0) return 0;
+window.calcUEstandarVolumen = function (volumen, tipoMaterial, instSeleccionado) {
+    const res = { u_aforo: 0, u_coef: 0, u_abs: 0, u_rel: 0 };
+    if (!(volumen > 0)) return res;
 
     // 1. Caso Transferpipeta: factor de calibración directo
     if (instSeleccionado && instSeleccionado.startsWith("trans_")) {
-        return window.TABLA_METROLOGIA.transferpipeta[instSeleccionado] || 0;
+        res.u_rel = window.TABLA_METROLOGIA.transferpipeta[instSeleccionado] || 0;
+        res.u_abs = res.u_rel * volumen;
+        return res;
     }
 
     // 2. Caso Vidrio Aforado: Combinación Triangular (Aforo) + Rectangular (Temperatura)
     const tol = window.obtenerToleranciaAforada(tipoMaterial, volumen);
-    const u_aforo = tol / Math.sqrt(6); // Distribución triangular según guía LIMS
-    const u_temp = (window.TABLA_METROLOGIA.delta_T * window.TABLA_METROLOGIA.gamma_H2O * volumen) / Math.sqrt(3);
-    const u_vol_abs = Math.sqrt(Math.pow(u_aforo, 2) + Math.pow(u_temp, 2));
+    res.u_aforo = tol / Math.sqrt(6);
+    res.u_coef = (volumen * window.TABLA_METROLOGIA.delta_T * window.TABLA_METROLOGIA.gamma_H2O) / Math.sqrt(3);
+    res.u_abs = Math.sqrt(Math.pow(res.u_aforo, 2) + Math.pow(res.u_coef, 2));
+    res.u_rel = res.u_abs / volumen;
+    return res;
+};
 
-    return u_vol_abs / volumen;
+/**
+ * Calcula la incertidumbre relativa combinada de un volumen (Aforo + Dilatación Térmica).
+ * Si es Transferpipeta, extrae el factor relativo directo de la tabla de calibración.
+ */
+window.calcUVolumetricaRel = function (volumen, tipoMaterial, instSeleccionado) {
+    return window.calcUEstandarVolumen(volumen, tipoMaterial, instSeleccionado).u_rel;
 };
 
 // Función para alternar visibilidad del selector de volumen final
@@ -109,7 +128,7 @@ window.OPCIONES_VOLFINAL_PREP = [
 ];
 
 window.preparacionTrabajoDefault = function () {
-    return { conc: '', alicuota: 5, peso: 0, inst: 'pipeta', volFinal: 100 };
+    return { conc: '', alicuota: 5, peso: 0, inst: 'pipeta', volFinal: 100, control: false };
 };
 
 const _escAttr = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -178,6 +197,13 @@ window.renderizarPreparacionesTrabajo = function () {
                     class="text-[11px] font-semibold text-red-600 hover:text-red-800 cursor-pointer">Eliminar</button>` : ''}
             </div>
 
+            <label class="flex items-center gap-2 text-xs font-semibold text-cyan-800 bg-cyan-50 border border-cyan-200 rounded px-2 py-1.5 cursor-pointer">
+                <input type="checkbox" ${p.control === true || p.control === 'true' ? 'checked' : ''}
+                    onchange="window.actualizarPreparacionTrabajo(${i}, 'control', this.checked)"
+                    class="w-4 h-4 text-cyan-600 rounded cursor-pointer">
+                <span>Es patrón de control</span>
+            </label>
+
             <div>
                 <label class="block text-xs font-semibold text-slate-600">Concentración del patrón (mg/L) <span class="text-[10px] text-slate-400 font-normal">(opcional, solo identifica)</span>:</label>
                 <input type="text" value="${_escAttr(p.conc)}" placeholder="Ej: 250"
@@ -245,13 +271,7 @@ window.calcularU_BalanzaGramos = function (valorPesado) {
     // 2. Primera incertidumbre estándar = u_balanza / raiz(3)
     const u_estandar_1 = u_balanza / Math.sqrt(3);
 
-    // 3. Suma de incertidumbres = raiz(u_balanza^2 + u_estandar_1^2)
-    const suma_incertidumbres = Math.sqrt(Math.pow(u_balanza, 2) + Math.pow(u_estandar_1, 2));
-
-    // 4. Segunda incertidumbre estándar relativa (la que se usa para u combinada relativa)
-    const u_estandar_2 = suma_incertidumbres / valorPesado;
-
-    return u_estandar_2;
+    return u_estandar_1;
 };
 
 /**
@@ -387,9 +407,11 @@ window.calcularIncertidumbre = function () {
     const u_patron_rel = usaPatron ? (2 / 1000) : 0; // 0.00200 relativo según certificado
 
     // --- 3. INCERTIDUMBRE TIPO B: PREPARACIÓN DEL PATRÓN DE TRABAJO ---
-    // Una fila independiente por cada preparación (p. ej. patrones de 250, 50 y 5 mg/L).
-    // Cada una combina su alícuota (pesada o volumétrica) con su aforo final; las varianzas
-    // de todas las preparaciones se suman después en la varianza total.
+    // Cada preparación combina la incertidumbre estándar de su alícuota (pesada o volumétrica)
+    // con la de su volumen final (balón aforado). En ambas, el aporte por dilatación térmica
+    // usa el valor (alícuota o volumen final) × 3 °C × 0.00021 (ver calcUEstandarVolumen).
+    // Las preparaciones marcadas como "patrón de control" no se muestran por separado: sus
+    // incertidumbres estándar se combinan en una sola fila (Patrones de Control).
     const num = (v, def) => { const n = parseFloat(v); return isNaN(n) ? def : n; };
     const prepsCalc = window.preparacionesTrabajo.map((p) => {
         const alic = num(p.alicuota, 0);
@@ -397,10 +419,11 @@ window.calcularIncertidumbre = function () {
         const volFinal = num(p.volFinal, 100);
         const u_alic = peso > 0
             ? window.calcularU_BalanzaGramos(peso)                                   // Pesada (balanza)
-            : window.calcUVolumetricaRel(alic, 'pipeta', p.inst || 'pipeta');         // Volumétrica
-        const u_vf = window.calcUVolumetricaRel(volFinal, 'balon', null);
-        const uRel = Math.sqrt(Math.pow(u_alic, 2) + Math.pow(u_vf, 2));
-        return { conc: String(p.conc ?? '').trim(), alic, peso, volFinal, uRel, varSq: Math.pow(uRel, 2) };
+            : window.calcUEstandarVolumen(alic, 'pipeta', p.inst || 'pipeta').u_rel;  // Volumétrica (incluye coef. térmico)
+        const u_vf = window.calcUEstandarVolumen(volFinal, 'balon', null).u_rel;      // Volumen final (incluye coef. térmico)
+        const varSq = Math.pow(u_alic, 2) + Math.pow(u_vf, 2);
+        const control = p.control === true || p.control === 'true';
+        return { conc: String(p.conc ?? '').trim(), alic, peso, volFinal, uRel: Math.sqrt(varSq), varSq, control };
     });
 
     let u_curva_total_rel = 0;
@@ -532,8 +555,15 @@ window.calcularIncertidumbre = function () {
         u_curva_total_rel = Math.sqrt(var_curva_tot);
     }
 
-    // Varianza total de la preparación de patrones de trabajo (suma de todas las preparaciones)
+    // Varianza total de la preparación de patrones (de trabajo y de control: todas las preparaciones)
     const var_prep_trab = prepsCalc.reduce((acc, p) => acc + p.varSq, 0);
+
+    // U combinada relativa de los patrones de control:
+    //   raíz( Σ u_estándar² ) de las incertidumbres estándar (alícuota y volumen final) de los seleccionados
+    const prepsTrabajoCalc = prepsCalc.filter(p => !p.control);
+    const prepsControlCalc = prepsCalc.filter(p => p.control);
+    const var_control = prepsControlCalc.reduce((acc, p) => acc + p.varSq, 0);
+    const u_control_rel = Math.sqrt(var_control);
 
     // --- 7. COMBINACIÓN TOTAL Y EXPANDIDA ---
     const var_estandarizacion = Math.pow(u_estandarizacion_rel, 2);
@@ -548,7 +578,9 @@ window.calcularIncertidumbre = function () {
 
     // --- Filas del presupuesto (única fuente para la tabla, el gráfico y el informe) ---
     const COLORES_PREP = ['#f59e0b', '#fb923c', '#fbbf24', '#d97706', '#ea580c', '#fcd34d', '#b45309', '#fdba74'];
-    const n_preps = prepsCalc.length;
+    const n_trab = prepsTrabajoCalc.length;
+    const hayControl = prepsControlCalc.length > 0;
+    const n_grupo3 = n_trab + (hayControl ? 1 : 0);
     const filas = [];
 
     filas.push({
@@ -569,9 +601,11 @@ window.calcularIncertidumbre = function () {
         corto: '2. Patrón (CRM)', color: '#10b981'
     });
 
-    prepsCalc.forEach((p, i) => {
-        const prefijo = n_preps > 1 ? `3.${i + 1}` : '3';
-        const concTxt = p.conc ? ` ${p.conc} mg/L` : (n_preps > 1 ? ` #${i + 1}` : '');
+    let k3 = 0;
+    prepsTrabajoCalc.forEach((p, i) => {
+        k3++;
+        const prefijo = n_grupo3 > 1 ? `3.${k3}` : '3';
+        const concTxt = p.conc ? ` ${p.conc} mg/L` : (n_trab > 1 ? ` #${i + 1}` : '');
         const modo = p.peso > 0 ? '(Pesada)' : '(Volumen)';
         const sufijoTxt = esRAS ? '(Suma 3 Cationes)' : modo;
         const sufijoHtml = esRAS ? '<span class="text-xs text-blue-600 font-semibold">(Suma 3 Cationes)</span>' : modo;
@@ -582,10 +616,28 @@ window.calcularIncertidumbre = function () {
             tipo: 'Tipo B',
             detalle: `${p.peso > 0 ? p.peso + ' g' : p.alic + ' mL'} → ${p.volFinal} mL`,
             uRel: p.uRel, varSq: p.varSq,
-            corto: n_preps > 1 ? `3.${i + 1} Prep. Trabajo${concTxt}` : '3. Prep. Trabajo',
+            corto: n_grupo3 > 1 ? `3.${k3} Prep. Trabajo${concTxt}` : '3. Prep. Trabajo',
             color: COLORES_PREP[i % COLORES_PREP.length]
         });
     });
+
+    // Fila única de Patrones de Control (combina alícuotas y volúmenes de todos los seleccionados)
+    if (hayControl) {
+        k3++;
+        const prefijo = n_grupo3 > 1 ? `3.${k3}` : '3';
+        const nC = prepsControlCalc.length;
+        const concsC = prepsControlCalc.map(p => p.conc).filter(Boolean);
+        const detalleC = `${nC} ${nC > 1 ? 'patrones' : 'patrón'}${concsC.length ? ` (${_escAttr(concsC.join(' / '))} mg/L)` : ''}`;
+        filas.push({
+            txt: `${prefijo} Patrones de Control ${esRAS ? '(Suma 3 Cationes)' : ''}`.trim(),
+            html: `${prefijo} Patrones de Control ${esRAS ? '<span class="text-xs text-blue-600 font-semibold">(Suma 3 Cationes)</span>' : ''}`.trim(),
+            tipo: 'Tipo B',
+            detalle: detalleC,
+            uRel: u_control_rel, varSq: var_control,
+            corto: `${prefijo} Patrones de Control`,
+            color: '#0891b2'
+        });
+    }
 
     filas.push({
         txt: `4. Curva de Calibración ${esRAS ? '(Suma 3 Cationes)' : '(Prep + Regresión)'}`,
