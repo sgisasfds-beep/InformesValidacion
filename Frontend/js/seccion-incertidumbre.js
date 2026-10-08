@@ -33,7 +33,7 @@ window.TABLA_METROLOGIA = {
     // OJO: verificar con el usuario si estos 6 valores (DAC-01 / DAM-06) están expresados
     // en mL o en µL — ver nota en la respuesta del chat.
     transferpipeta: {
-        "DAX-07": [{ vol: 1, u: 0.00016 }, { vol: 5, u: 0.0016 }, { vol: 10, u: 0.0016 }],
+        "DAX-07": [{ vol: 1, u: 0.00022 }, { vol: 5, u: 0.0021 }, { vol: 10, u: 0.0026 }],
         "DAC-01": [{ vol: 0.1, u: 0.093 }, { vol: 0.5, u: 0.16 }, { vol: 1, u: 0.27 }],
         "DAM-06": [{ vol: 0.1, u: 0.2 }, { vol: 0.5, u: 0.19 }, { vol: 1, u: 0.23 }],
         "DAX-10": [{ vol: 1, u: 0.00016 }, { vol: 5, u: 0.0016 }, { vol: 10, u: 0.002 }]
