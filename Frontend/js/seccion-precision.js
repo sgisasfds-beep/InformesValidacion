@@ -25,11 +25,25 @@ window.crearGradienteVertical = window.crearGradienteVertical || function (chart
 
 window.renderizarPrecision = function (control) {
     if (!window.elementoActivo || !window.datosGlobales[window.elementoActivo] || !window.datosGlobales[window.elementoActivo].precision) return;
+    // Ocultar pestañas LCM/CCV/EA sin datos y redirigir al primer control disponible
+    const controlValido = window.aplicarVisibilidadTabsControl
+        ? window.aplicarVisibilidadTabsControl('prec', window.elementoActivo, control)
+        : String(control || '').toLowerCase();
+    if (!controlValido) {
+        const contPrec = document.getElementById('contenidoPrecision');
+        if (contPrec) contPrec.classList.add('hidden');
+        return;
+    }
+    control = controlValido;
     window.controlActivoPrec = control;
     window.actualizarTabs('prec', control);
 
     const dataPrec = window.datosGlobales[window.elementoActivo].precision[control];
-    if (!dataPrec) return;
+    if (!dataPrec) {
+        const contPrec = document.getElementById('contenidoPrecision');
+        if (contPrec) contPrec.classList.add('hidden');
+        return;
+    }
 
     document.getElementById('contenidoPrecision').classList.remove('hidden');
     const fmtYesNo = (normal) => normal ? `<span class="font-bold text-emerald-700">yes</span>` : `<span class="font-bold text-red-600">no</span>`;

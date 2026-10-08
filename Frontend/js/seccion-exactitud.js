@@ -25,6 +25,63 @@ window.crearGradienteVertical = window.crearGradienteVertical || function (chart
     return gradiente;
 };
 
+// ----------------------------------------------------------------------
+// DISPONIBILIDAD DE DATOS POR CONTROL / LINEALIDAD
+// Un método puede no traer LCM, CCV o EA (o solo algunos), y puede no tener
+// linealidad. Estos helpers son la única fuente de verdad para ocultar
+// pestañas (Precisión / Exactitud) y secciones del informe.
+// ----------------------------------------------------------------------
+window.CONTROLES_CALIDAD = ['lcm', 'ccv', 'ea'];
+
+window.tieneDatosControl = function (elem, ctrl) {
+    const data = window.datosGlobales && window.datosGlobales[elem];
+    if (!data) return false;
+    const key = String(ctrl).toLowerCase();
+    const obj = data[key] || data[key.toUpperCase()] || (data.exactitud && (data.exactitud[key] || data.exactitud[key.toUpperCase()]));
+    if (!obj) return false;
+    if (Array.isArray(obj.raw) && obj.raw.length > 0) return true;
+    const v1 = obj.analista_1 && (obj.analista_1.valores || (Array.isArray(obj.analista_1) ? obj.analista_1 : []));
+    const v2 = obj.analista_2 && (obj.analista_2.valores || (Array.isArray(obj.analista_2) ? obj.analista_2 : []));
+    return (Array.isArray(v1) && v1.length > 0) || (Array.isArray(v2) && v2.length > 0);
+};
+
+window.controlesDisponibles = function (elem) {
+    return window.CONTROLES_CALIDAD.filter(c => window.tieneDatosControl(elem, c));
+};
+
+window.tieneLinealidad = function (elem) {
+    const data = window.datosGlobales && window.datosGlobales[elem];
+    const lin = data && data.linealidad;
+    if (!lin) return false;
+    if (lin.es_ras_combinado) return true;
+    return !!(lin.stats && Array.isArray(lin.tabla) && lin.tabla.length > 0);
+};
+
+window.tieneMuestras = function (elem) {
+    const data = window.datosGlobales && window.datosGlobales[elem];
+    if (!data) return false;
+    const m = data.muestras || data.exactitud_muestras || (data.exactitud && data.exactitud.muestras) || {};
+    return Object.values(m).some(arr => Array.isArray(arr) && arr.length > 0);
+};
+
+/**
+ * Oculta/muestra los botones de pestaña LCM/CCV/EA según los datos del
+ * elemento activo. prefijo: 'exa' (ids en mayúscula) o 'prec' (minúscula).
+ * Devuelve el control a mostrar (el pedido si existe; si no, el primero
+ * disponible; null si no hay ninguno).
+ */
+window.aplicarVisibilidadTabsControl = function (prefijo, elem, controlPedido) {
+    const disp = window.controlesDisponibles(elem);
+    window.CONTROLES_CALIDAD.forEach(c => {
+        const id = prefijo === 'exa' ? `tab-exa-${c.toUpperCase()}` : `tab-prec-${c}`;
+        const btn = document.getElementById(id);
+        if (btn) btn.style.display = disp.includes(c) ? '' : 'none';
+    });
+    const pedido = String(controlPedido || '').toLowerCase();
+    if (disp.includes(pedido)) return pedido;
+    return disp[0] || null;
+};
+
 window.chartMuestrasInstancia = null;
 window.matrizActivaMuestra = null;
 window.MATRICES_SUELO = window.MATRICES_SUELO || ['arenoso', 'arcilloso', 'limoso'];
@@ -172,16 +229,25 @@ window.renderizarMuestrasAdicionadas = function (matrizKey) {
     // El duplicado es opcional: si no existe, el backend envía null y se muestra "—"
     const fmt = (v, suf = '') => (v === null || v === undefined) ? '—' : `${v}${suf}`;
     let filasHTML = '';
+    // Reglas del duplicado (las aplica el backend y las indica con m.duplicado_de):
+    //  - 'adicionada': existe ADICIONADO para la submatriz -> el duplicado lo es del adicionado
+    //                  (% Rec. Duplicado y RPD se calculan contra el adicionado).
+    //  - 'normal'    : solo hay muestra + duplicado -> es duplicado de la muestra;
+    //                  no aplica % de recuperación y el RPD es muestra vs duplicado.
     registrosMatriz.forEach((m) => {
+        const dupDeMuestra = m.duplicado_de === 'normal';
+        const etiquetaDup = m.duplicada === null || m.duplicada === undefined ? ''
+            : (dupDeMuestra ? ' <span class="text-[9px] text-slate-500">(dup. de muestra)</span>'
+                : (m.duplicado_de === 'adicionada' ? ' <span class="text-[9px] text-slate-500">(dup. de adicionado)</span>' : ''));
         filasHTML += `
             <tr class="hover:bg-slate-50">
                 <td class="border border-slate-300 p-2 font-bold text-slate-700 bg-slate-50">#${m.replica}</td>
                 <td class="border border-slate-300 p-2">${m.analista}</td>
-                <td class="border border-slate-300 p-2 font-mono">${m.normal}</td>
-                <td class="border border-slate-300 p-2 font-mono">${m.adicionada}</td>
-                <td class="border border-slate-300 p-2 font-mono">${fmt(m.duplicada)}</td>
-                <td class="border border-slate-300 p-2 font-mono text-blue-700 font-semibold">${m.recuperacion_adic}%</td>
-                <td class="border border-slate-300 p-2 font-mono text-indigo-700 font-semibold">${fmt(m.recuperacion_dup, '%')}</td>
+                <td class="border border-slate-300 p-2 font-mono">${fmt(m.normal)}</td>
+                <td class="border border-slate-300 p-2 font-mono">${fmt(m.adicionada)}</td>
+                <td class="border border-slate-300 p-2 font-mono">${fmt(m.duplicada)}${etiquetaDup}</td>
+                <td class="border border-slate-300 p-2 font-mono text-blue-700 font-semibold">${fmt(m.recuperacion_adic, '%')}</td>
+                <td class="border border-slate-300 p-2 font-mono text-indigo-700 font-semibold">${dupDeMuestra ? '—' : fmt(m.recuperacion_dup, '%')}</td>
                 <td class="border border-slate-300 p-2 font-mono text-amber-700 font-semibold">${fmt(m.rpd, '%')}</td>
             </tr>
         `;
@@ -490,6 +556,25 @@ window.dibujarGraficoRecuperacion = function (metricsA1, metricsA2) {
  */
 window.renderizarExactitud = function (control) {
     if (!window.elementoActivo || !window.datosGlobales[window.elementoActivo]) return;
+
+    // Ocultar pestañas LCM/CCV/EA sin datos y redirigir al primer control disponible
+    const controlValido = window.aplicarVisibilidadTabsControl('exa', window.elementoActivo, control);
+    const btnMuestras = document.getElementById('tab-exa-MUESTRAS');
+    const hayMuestras = window.tieneMuestras(window.elementoActivo);
+    if (btnMuestras) btnMuestras.style.display = hayMuestras ? '' : 'none';
+    if (!controlValido) {
+        // Sin controles: mostrar muestras si existen; si no, no hay nada que pintar
+        const contExa = document.getElementById('contenidoExactitud');
+        if (hayMuestras) {
+            window.renderizarMuestrasAdicionadas();
+        } else {
+            if (contExa) contExa.classList.add('hidden');
+            const contMu = document.getElementById('contenidoMuestras');
+            if (contMu) contMu.classList.add('hidden');
+        }
+        return;
+    }
+    control = controlValido.toUpperCase();
     window.controlActivoExa = control;
     if (window.actualizarTabs) window.actualizarTabs('exa', control);
 

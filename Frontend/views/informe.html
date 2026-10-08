@@ -542,7 +542,7 @@
                                 <th class="border border-slate-300 p-1.5" rowspan="2">Ensayo</th>
                                 <th id="inf-th-mb" class="border border-slate-300 p-1.5 bg-slate-200" colspan="2">Blanco del Método
                                     (MB)</th>
-                                <th class="border border-slate-300 p-1.5 bg-blue-100" colspan="2">Límite de
+                                <th id="inf-th-lcm" class="border border-slate-300 p-1.5 bg-blue-100" colspan="2">Límite de
                                     Cuantificación (LCM)</th>
                             </tr>
                             <tr class="bg-slate-50 text-slate-700 font-bold border-b border-slate-300">
@@ -550,8 +550,8 @@
                                 <th id="inf-th-fecha-a2" class="border border-slate-300 p-1.5 bg-amber-50">Analista 2</th>
                                 <th class="border border-slate-300 p-1.5">Analista 1</th>
                                 <th id="inf-th-mb-a2" class="border border-slate-300 p-1.5">Analista 2</th>
-                                <th class="border border-slate-300 p-1.5">Analista 1</th>
-                                <th class="border border-slate-300 p-1.5">Analista 2</th>
+                                <th id="inf-th-lcm-a1" class="border border-slate-300 p-1.5">Analista 1</th>
+                                <th id="inf-th-lcm-a2" class="border border-slate-300 p-1.5">Analista 2</th>
                             </tr>
                         </thead>
                         <tbody id="inf-tabla-datos-mb-lcm" class="divide-y divide-slate-300"></tbody>
@@ -1066,28 +1066,28 @@
                                     detección del método</td>
                                 <td class="p-3 text-slate-700 leading-relaxed" id="prev-sec-lod">--</td>
                             </tr>
-                            <tr class="bg-slate-50">
+                            <tr id="fila-loq" class="bg-slate-50">
                                 <td class="p-3 font-bold text-slate-800 w-1/4 border-r border-slate-300">Límite de
                                     cuantificación del método</td>
                                 <td class="p-3 text-slate-700 leading-relaxed" id="prev-sec-loq">--</td>
                             </tr>
-                            <tr>
+                            <tr id="fila-linealidad">
                                 <td class="p-3 font-bold text-slate-800 w-1/4 border-r border-slate-300">Linealidad
                                 </td>
                                 <td class="p-3 text-slate-700 leading-relaxed" id="prev-sec-linealidad">--</td>
                             </tr>
-                            <tr class="bg-slate-50">
+                            <tr id="fila-sensibilidad" class="bg-slate-50">
                                 <td class="p-3 font-bold text-slate-800 w-1/4 border-r border-slate-300">
                                     Sensibilidad
                                 </td>
                                 <td class="p-3 text-slate-700 leading-relaxed" id="prev-sec-sensibilidad"></td>
                             </tr>
-                            <tr>
+                            <tr id="fila-veracidad">
                                 <td class="p-3 font-bold text-slate-800 w-1/4 border-r border-slate-300">Veracidad
                                 </td>
                                 <td class="p-3 text-slate-700 leading-relaxed" id="prev-sec-veracidad">--</td>
                             </tr>
-                            <tr class="bg-slate-50">
+                            <tr id="fila-precision" class="bg-slate-50">
                                 <td class="p-3 font-bold text-slate-800 w-1/4 border-r border-slate-300">
                                     Precisión-Precisión intermedia</td>
                                 <td class="p-3 text-slate-700 leading-relaxed" id="prev-sec-precision">--</td>

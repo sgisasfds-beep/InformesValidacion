@@ -467,6 +467,18 @@ window.guardarMetadatosYCompilar = function () {
     const dataElem = window.datosGlobales[elemActivo] || {};
     const exaLcm = dataElem.exactitud?.LCM || dataElem.exactitud?.lcm || {};
     const linData = dataElem.linealidad?.stats || null;
+    const tieneLinAct = window.tieneLinealidad(elemActivo);
+    const dispCtlAct = window.controlesDisponibles(elemActivo);
+    const hayLcmAct = dispCtlAct.includes('lcm');
+    const hayMuestrasAct = window.tieneMuestras(elemActivo);
+    const hayVerAct = dispCtlAct.length > 0 || hayMuestrasAct;
+    const hayPrecAct = dispCtlAct.length > 0;
+    const ocultarFila = (id, visible) => { const f = document.getElementById(id); if (f) f.style.display = visible ? '' : 'none'; };
+    ocultarFila('fila-loq', hayLcmAct);
+    ocultarFila('fila-linealidad', tieneLinAct);
+    ocultarFila('fila-sensibilidad', tieneLinAct);
+    ocultarFila('fila-veracidad', hayVerAct);
+    ocultarFila('fila-precision', hayPrecAct);
     const lod = dataElem.lod_posible ?? '--';
     const loq = dataElem.loq_posible ?? '--';
 
@@ -683,7 +695,9 @@ window.guardarMetadatosYCompilar = function () {
     const concContainer = document.getElementById('prev-conclusiones');
 
     // Cálculos de control y verificación segura de variables (evita que el código se rompa)
-    const recVal = parseFloat(exaLcm?.recuperacion ?? 100);
+    const ctlRef = dispCtlAct[0];
+    const exaRef = hayLcmAct ? exaLcm : (ctlRef ? (dataElem.exactitud?.[ctlRef.toUpperCase()] || dataElem.exactitud?.[ctlRef] || {}) : {});
+    const recVal = parseFloat(exaRef?.recuperacion ?? 100);
 
     // Evaluaciones para el texto técnico (LCM)
     const errorLcm = Math.abs(100 - recVal);
@@ -691,13 +705,14 @@ window.guardarMetadatosYCompilar = function () {
 
     // ¡SOLUCIÓN AL ERROR! Declaramos de nuevo cumpleVeracidad para que no se rompa la línea 444.
     // Mantenemos la lógica original (75-125) para que tu sistema de Declaración de Conformidad general funcione.
-    const cumpleVeracidad = recVal >= 75 && recVal <= 125;
+    const cumpleVeracidad = !hayVerAct || (recVal >= 75 && recVal <= 125);
 
-    const cvVal = parseFloat(dataElem?.lcm?.global?.cv ?? 0);
+    const cvVal = parseFloat((ctlRef ? dataElem?.[ctlRef]?.global?.cv : null) ?? 0);
     const r2Val = parseFloat(linData?.r2 ?? 0.999);
 
-    const cumplePrecision = cvVal <= 15;
-    const cumpleLinealidad = r2Val >= 0.990;
+    const cumplePrecision = !hayPrecAct || cvVal <= 15;
+    const cumpleLinealidad = !tieneLinAct || r2Val >= 0.990;
+    const nombreCtrlRef = ctlRef ? ctlRef.toUpperCase() : 'LCM';
 
     // --- MANEJO SEGURO DE VARIABLES DE CONTEXTO ---
     const valorLcmTeorico = typeof teoricoLcmVal !== 'undefined' ? teoricoLcmVal : (dataElem?.teorico_lcm ?? loq ?? '--');
@@ -727,11 +742,11 @@ window.guardarMetadatosYCompilar = function () {
             <ul class="list-disc pl-5 space-y-3 leading-relaxed text-justify">
                 <li><strong>Límites Operativos y Capacidad de Detección:</strong> El análisis de varianza del ruido de fondo permitió establecer un LOD de <strong>${valLod} mg/L</strong> y un LOQ calculado de <strong>${valLoq} mg/L</strong>. En favor de la máxima robustez analítica, el laboratorio adopta formalmente un Límite Operativo/Reportable (LCM) de <strong>${valorLcmTeorico} mg/L</strong>, garantizando cuantificaciones estadísticamente confiables en el umbral inferior de la curva.</li>
                 
-                <li><strong>Evaluación de Sesgo y Veracidad:</strong> El desempeño metrológico evaluado en el LCM evidencia un error relativo del <strong>${errorLcm.toFixed(1)}%</strong>, el cual ${cumpleLcm ? '<span class="text-emerald-700 font-bold">CUMPLE CON EL CRITERIO</span> máximo de aceptación permitido (≤ 35%).' : '<span class="text-red-600 font-bold">EXCEDE EL LÍMITE</span> de tolerancia del 35%.'} De igual forma, se validó la ausencia de errores sistemáticos mediante el cumplimiento normativo en los estándares CCV y EA (Error ≤ 10%), respaldado a su vez por ensayos de adición de matriz cuyos porcentajes de recuperación satisfacen de manera unánime la franja del 75% al 125%.</li>
+                ${hayVerAct && hayLcmAct ? `<li><strong>Evaluación de Sesgo y Veracidad:</strong> El desempeño metrológico evaluado en el LCM evidencia un error relativo del <strong>${errorLcm.toFixed(1)}%</strong>, el cual ${cumpleLcm ? '<span class="text-emerald-700 font-bold">CUMPLE CON EL CRITERIO</span> máximo de aceptación permitido (≤ 35%).' : '<span class="text-red-600 font-bold">EXCEDE EL LÍMITE</span> de tolerancia del 35%.'} De igual forma, se validó la ausencia de errores sistemáticos mediante el cumplimiento normativo en los estándares CCV y EA (Error ≤ 10%), respaldado a su vez por ensayos de adición de matriz cuyos porcentajes de recuperación satisfacen de manera unánime la franja del 75% al 125%.</li>` : ''}
                 
-                <li><strong>Precisión Intermedia y Repetibilidad:</strong> La varianza del procedimiento, expuesta a iteraciones de analista y jornada, superó satisfactoriamente el Análisis de Varianza (ANOVA), concluyendo que ${cumplePrecision ? '<span class="text-emerald-700 font-bold">NO EXISTE DISPERSIÓN SIGNIFICATIVA</span> (CV ≤ 15%). La metodología analítica demuestra ser altamente reproducible e independiente de las fluctuaciones del factor humano u operativo.' : '<span class="text-red-600 font-bold">EXISTE VARIABILIDAD CRÍTICA</span> inter-grupos, evidenciando inconsistencias operativas estructurales que afectan gravemente la precisión del reporte.'}</li>
+                ${hayPrecAct ? `<li><strong>Precisión Intermedia y Repetibilidad:</strong> La varianza del procedimiento, expuesta a iteraciones de analista y jornada, superó satisfactoriamente el Análisis de Varianza (ANOVA), concluyendo que ${cumplePrecision ? '<span class="text-emerald-700 font-bold">NO EXISTE DISPERSIÓN SIGNIFICATIVA</span> (CV ≤ 15%). La metodología analítica demuestra ser altamente reproducible e independiente de las fluctuaciones del factor humano u operativo.' : '<span class="text-red-600 font-bold">EXISTE VARIABILIDAD CRÍTICA</span> inter-grupos, evidenciando inconsistencias operativas estructurales que afectan gravemente la precisión del reporte.'}</li>` : ''}
                 
-                <li><strong>Linealidad del Rango Dinámico:</strong> La calibración instrumental exhibe una correlación proporcional directa innegable, sustentada matemáticamente por un coeficiente de determinación <strong>R² = ${r2Val}</strong>, magnitud que ${cumpleLinealidad ? '<span class="text-emerald-700 font-bold">SATISFACE EL CRITERIO</span> normativo estricto de linealidad (R² ≥ 0.990).' : '<span class="text-red-600 font-bold">INCUMPLE EL CRITERIO</span> normativo estipulado, demostrando una pérdida inaceptable de la función de proporcionalidad requerida.'}</li>
+                ${tieneLinAct ? `<li><strong>Linealidad del Rango Dinámico:</strong> La calibración instrumental exhibe una correlación proporcional directa innegable, sustentada matemáticamente por un coeficiente de determinación <strong>R² = ${r2Val}</strong>, magnitud que ${cumpleLinealidad ? '<span class="text-emerald-700 font-bold">SATISFACE EL CRITERIO</span> normativo estricto de linealidad (R² ≥ 0.990).' : '<span class="text-red-600 font-bold">INCUMPLE EL CRITERIO</span> normativo estipulado, demostrando una pérdida inaceptable de la función de proporcionalidad requerida.'}</li>` : ''}
                 
                 <li><strong>Presupuesto de Incertidumbre Combinada:</strong> ${textoIncertidumbreConclusion}</li>
             </ul>
@@ -748,10 +763,16 @@ window.guardarMetadatosYCompilar = function () {
     // cumplimiento integral de ISO/IEC 17025 a partir de este único informe.
     const decElem = document.getElementById('prev-declaracion-conformidad');
     if (decElem) {
+        const atributosEvalLista = [];
+        if (hayVerAct) atributosEvalLista.push('veracidad');
+        if (hayPrecAct) atributosEvalLista.push('precisión');
+        if (tieneLinAct) atributosEvalLista.push('linealidad');
+        atributosEvalLista.push('incertidumbre');
+        const atributosEval = atributosEvalLista.length > 1 ? atributosEvalLista.slice(0, -1).join(', ') + ' e ' + atributosEvalLista[atributosEvalLista.length - 1] : atributosEvalLista[0];
         const globalConforme = cumpleVeracidad && cumplePrecision && cumpleLinealidad;
         if (globalConforme) {
             decElem.className = "bg-emerald-50 text-emerald-950 p-4 rounded-lg border border-emerald-300 font-medium text-xs text-justify leading-relaxed";
-            decElem.innerHTML = `<strong>DECLARACIÓN DE CONFORMIDAD:</strong> Con base en los resultados obtenidos y en los criterios de aceptación previamente establecidos, el procedimiento <strong>${procedimientoInterno}</strong> para la determinación de <strong>${elemActivo}</strong> presenta un desempeño analítico <strong>CONFORME</strong> para los atributos evaluados en el presente estudio (veracidad, precisión, linealidad e incertidumbre). Esta conclusión aplica únicamente a la matriz <strong>${matrizDetallada}</strong>, al intervalo de trabajo y a las condiciones experimentales efectivamente evaluados y soportados por los registros primarios. La información correspondiente a ensayo de aptitud, comparación con método normalizado, robustez, interferencias y comparaciones interlaboratorio, cuando aplique, deberá encontrarse disponible y trazable de forma independiente a esta declaración.`;
+            decElem.innerHTML = `<strong>DECLARACIÓN DE CONFORMIDAD:</strong> Con base en los resultados obtenidos y en los criterios de aceptación previamente establecidos, el procedimiento <strong>${procedimientoInterno}</strong> para la determinación de <strong>${elemActivo}</strong> presenta un desempeño analítico <strong>CONFORME</strong> para los atributos evaluados en el presente estudio (${atributosEval}). Esta conclusión aplica únicamente a la matriz <strong>${matrizDetallada}</strong>, al intervalo de trabajo y a las condiciones experimentales efectivamente evaluados y soportados por los registros primarios. La información correspondiente a ensayo de aptitud, comparación con método normalizado, robustez, interferencias y comparaciones interlaboratorio, cuando aplique, deberá encontrarse disponible y trazable de forma independiente a esta declaración.`;
         } else {
             decElem.className = "bg-red-50 text-red-950 p-4 rounded-lg border border-red-300 font-medium text-xs text-justify leading-relaxed";
             decElem.innerHTML = `<strong>DECLARACIÓN DE NO CONFORMIDAD:</strong> El procedimiento <strong>${procedimientoInterno}</strong> para la determinación de <strong>${elemActivo}</strong> en matriz <strong>${matrizDetallada}</strong> <strong>NO CUMPLE CON LOS CRITERIOS DE ACEPTACIÓN</strong> o presenta inconsistencias estadísticas en los datos procesados para los atributos evaluados en este estudio.`;
@@ -1126,7 +1147,17 @@ window.poblarSeccion6Resultados = function (elem) {
     document.getElementById('inf-stat-error-lcm').innerText = data.lcm?.global?.error_pct !== undefined ? `${data.lcm.global.error_pct}%` : '--';
 
     const tbodyMbLcm = document.getElementById('inf-tabla-datos-mb-lcm');
-    if (tbodyMbLcm && data.mb && data.lcm) {
+    const hayLCM = window.tieneDatosControl(elem, 'lcm');
+    const dispControles = window.controlesDisponibles(elem);
+    // Sin LCM: ocultar columnas/figura de LCM en la Tabla 1 y la Figura 1
+    const mostrarSi = (id, visible, display = '') => { const el = document.getElementById(id); if (el) el.style.display = visible ? display : 'none'; };
+    mostrarSi('inf-th-lcm', hayLCM);
+    mostrarSi('inf-th-lcm-a1', hayLCM);
+    mostrarSi('inf-th-lcm-a2', hayLCM);
+    const canvasLcmFig = document.getElementById('chart-inf-lcm');
+    if (canvasLcmFig && canvasLcmFig.closest('.mantener-junto')) canvasLcmFig.closest('.mantener-junto').style.display = hayLCM ? '' : 'none';
+
+    if (tbodyMbLcm && data.mb) {
         let htmlRows = '';
         // Fisicoquímico: un único blanco (Analista 1)
         const soloMBA1 = data.mb.solo_analista_1 === true;
@@ -1140,8 +1171,8 @@ window.poblarSeccion6Resultados = function (elem) {
         if (thMBA2) thMBA2.style.display = soloMBA1 ? 'none' : '';
         const valsMBA1 = data.mb.analista_1?.valores || [];
         const valsMBA2 = data.mb.analista_2?.valores || [];
-        const valsLCMA1 = data.lcm.analista_1?.valores || [];
-        const valsLCMA2 = data.lcm.analista_2?.valores || [];
+        const valsLCMA1 = data.lcm?.analista_1?.valores || [];
+        const valsLCMA2 = data.lcm?.analista_2?.valores || [];
 
         const fechasMBA1 = window.fechasControlPorAnalista(data.mb, 'Analista 1');
         const fechasMBA2 = window.fechasControlPorAnalista(data.mb, 'Analista 2');
@@ -1154,8 +1185,8 @@ window.poblarSeccion6Resultados = function (elem) {
                     <td class="border border-slate-300 p-1 font-bold bg-slate-50">${i + 1}</td>
                     <td class="border border-slate-300 p-1 font-mono">${valsMBA1[i] ?? '-'}</td>
                     ${soloMBA1 ? '' : `<td class="border border-slate-300 p-1 font-mono">${valsMBA2[i] ?? '-'}</td>`}
-                    <td class="border border-slate-300 p-1 font-mono text-blue-700 font-bold">${valsLCMA1[i] ?? '-'}</td>
-                    <td class="border border-slate-300 p-1 font-mono text-blue-700 font-bold">${valsLCMA2[i] ?? '-'}</td>
+                    ${hayLCM ? `<td class="border border-slate-300 p-1 font-mono text-blue-700 font-bold">${valsLCMA1[i] ?? '-'}</td>
+                    <td class="border border-slate-300 p-1 font-mono text-blue-700 font-bold">${valsLCMA2[i] ?? '-'}</td>` : ''}
                 </tr>
             `;
         }
@@ -1163,15 +1194,17 @@ window.poblarSeccion6Resultados = function (elem) {
     }
 
     const tbodyResumenMbLcm = document.getElementById('inf-tabla-resumen-mb-lcm');
-    if (tbodyResumenMbLcm && data.mb && data.lcm) {
+    if (tbodyResumenMbLcm && data.mb) {
         const soloMB_A1 = data.mb.solo_analista_1 === true;
+        const filaLCM = (grupo, st, destacada) => (!hayLCM || !st) ? '' :
+            `<tr${destacada ? ' class="bg-blue-50 font-bold"' : ''}><td class="border border-slate-300 p-1.5${destacada ? '' : ' font-bold'}">LCM</td><td class="border border-slate-300 p-1.5">${grupo}</td><td class="border border-slate-300 p-1.5 font-mono">${st.promedio}</td><td class="border border-slate-300 p-1.5 font-mono">${st.desviacion}</td><td class="border border-slate-300 p-1.5 font-mono">${st.cv}%</td></tr>`;
         tbodyResumenMbLcm.innerHTML = `
             <tr><td class="border border-slate-300 p-1.5 font-bold">MB</td><td class="border border-slate-300 p-1.5">Analista 1</td><td class="border border-slate-300 p-1.5 font-mono">${data.mb.analista_1.promedio}</td><td class="border border-slate-300 p-1.5 font-mono">${data.mb.analista_1.desviacion}</td><td class="border border-slate-300 p-1.5 font-mono">${data.mb.analista_1.cv}%</td></tr>
             ${soloMB_A1 ? '' : `<tr><td class="border border-slate-300 p-1.5 font-bold">MB</td><td class="border border-slate-300 p-1.5">Analista 2</td><td class="border border-slate-300 p-1.5 font-mono">${data.mb.analista_2.promedio}</td><td class="border border-slate-300 p-1.5 font-mono">${data.mb.analista_2.desviacion}</td><td class="border border-slate-300 p-1.5 font-mono">${data.mb.analista_2.cv}%</td></tr>`}
             ${soloMB_A1 ? '' : `<tr class="bg-blue-50 font-bold"><td class="border border-slate-300 p-1.5">MB</td><td class="border border-slate-300 p-1.5">Global</td><td class="border border-slate-300 p-1.5 font-mono">${data.mb.global.promedio}</td><td class="border border-slate-300 p-1.5 font-mono">${data.mb.global.desviacion}</td><td class="border border-slate-300 p-1.5 font-mono">${data.mb.global.cv}%</td></tr>`}
-            <tr><td class="border border-slate-300 p-1.5 font-bold">LCM</td><td class="border border-slate-300 p-1.5">Analista 1</td><td class="border border-slate-300 p-1.5 font-mono">${data.lcm.analista_1.promedio}</td><td class="border border-slate-300 p-1.5 font-mono">${data.lcm.analista_1.desviacion}</td><td class="border border-slate-300 p-1.5 font-mono">${data.lcm.analista_1.cv}%</td></tr>
-            <tr><td class="border border-slate-300 p-1.5 font-bold">LCM</td><td class="border border-slate-300 p-1.5">Analista 2</td><td class="border border-slate-300 p-1.5 font-mono">${data.lcm.analista_2.promedio}</td><td class="border border-slate-300 p-1.5 font-mono">${data.lcm.analista_2.desviacion}</td><td class="border border-slate-300 p-1.5 font-mono">${data.lcm.analista_2.cv}%</td></tr>
-            <tr class="bg-blue-50 font-bold"><td class="border border-slate-300 p-1.5">LCM</td><td class="border border-slate-300 p-1.5">Global</td><td class="border border-slate-300 p-1.5 font-mono">${data.lcm.global.promedio}</td><td class="border border-slate-300 p-1.5 font-mono">${data.lcm.global.desviacion}</td><td class="border border-slate-300 p-1.5 font-mono">${data.lcm.global.cv}%</td></tr>
+            ${filaLCM('Analista 1', data.lcm?.analista_1, false)}
+            ${filaLCM('Analista 2', data.lcm?.analista_2, false)}
+            ${filaLCM('Global', data.lcm?.global, true)}
         `;
     }
 
@@ -1194,6 +1227,20 @@ window.poblarSeccion6Resultados = function (elem) {
     /* -------------------------------------------------------------------------- */
     /* 6.2 PRECISIÓN (LCM, CCV, EA)                                              */
     /* -------------------------------------------------------------------------- */
+    // Visibilidad según controles con datos (LCM/CCV/EA): sección completa y figuras individuales
+    mostrarSi('subsec-6-2', dispControles.length > 0);
+    ['subsec-6-3-1', 'subsec-6-3-2', 'subsec-6-3-3'].forEach(id => mostrarSi(id, dispControles.length > 0));
+    window.CONTROLES_CALIDAD.forEach(c => {
+        const tag = c.toUpperCase();
+        ['prec', 'exa'].forEach(pref => {
+            const cv = document.getElementById(`chart-inf-${pref}-${tag}`);
+            const tarjeta = cv && cv.closest('.mantener-junto');
+            if (tarjeta) tarjeta.style.display = dispControles.includes(c) ? '' : 'none';
+        });
+    });
+    // Si no hay ningún control, 6.3 solo conserva las muestras adicionadas; si tampoco hay, se oculta toda 6.3
+    mostrarSi('subsec-6-3', dispControles.length > 0 || window.tieneMuestras(elem));
+
     const tbodyConsolidadoPrec = document.getElementById('inf-tabla-consolidado-precision');
     if (tbodyConsolidadoPrec && data.precision) {
         let htmlPrec = '';
@@ -1520,11 +1567,11 @@ window.poblarSeccion6Resultados = function (elem) {
                             <td class="border border-slate-300 p-1 font-semibold text-slate-700">${r.replica ?? '-'}</td>
                             <td class="border border-slate-300 p-1">${r.analista || 'N/A'}</td>
                             <td class="border border-slate-300 p-1 font-mono">${r.normal !== undefined ? Number(r.normal).toFixed(3) : '-'}</td>
-                            <td class="border border-slate-300 p-1 font-mono">${r.adicionada !== undefined ? Number(r.adicionada).toFixed(3) : '-'}</td>
-                            <td class="border border-slate-300 p-1 font-mono">${r.duplicada !== undefined ? Number(r.duplicada).toFixed(3) : '-'}</td>
-                            <td class="border border-slate-300 p-1 font-mono font-bold text-blue-700 bg-blue-50/50">${r.recuperacion_adic !== undefined ? Number(r.recuperacion_adic).toFixed(2) + '%' : '-'}</td>
-                            <td class="border border-slate-300 p-1 font-mono font-bold text-indigo-700 bg-indigo-50/50">${r.recuperacion_dup !== undefined ? Number(r.recuperacion_dup).toFixed(2) + '%' : '-'}</td>
-                            <td class="border border-slate-300 p-1 font-mono font-bold text-amber-700 bg-amber-50/50">${r.rpd !== undefined ? Number(r.rpd).toFixed(2) + '%' : '-'}</td>
+                            <td class="border border-slate-300 p-1 font-mono">${r.adicionada != null ? Number(r.adicionada).toFixed(3) : '-'}</td>
+                            <td class="border border-slate-300 p-1 font-mono">${r.duplicada != null ? Number(r.duplicada).toFixed(3) : '-'}</td>
+                            <td class="border border-slate-300 p-1 font-mono font-bold text-blue-700 bg-blue-50/50">${r.recuperacion_adic != null ? Number(r.recuperacion_adic).toFixed(2) + '%' : '-'}</td>
+                            <td class="border border-slate-300 p-1 font-mono font-bold text-indigo-700 bg-indigo-50/50">${r.recuperacion_dup != null ? Number(r.recuperacion_dup).toFixed(2) + '%' : '-'}</td>
+                            <td class="border border-slate-300 p-1 font-mono font-bold text-amber-700 bg-amber-50/50">${r.rpd != null ? Number(r.rpd).toFixed(2) + '%' : '-'}</td>
                         </tr>
                     `).join('');
                 }
@@ -1621,6 +1668,9 @@ window.poblarSeccion6Resultados = function (elem) {
     /* 6.5 LINEALIDAD - SENSIBILIDAD                                             */
     /* -------------------------------------------------------------------------- */
     const linData = data.linealidad;
+    const tieneLin = window.tieneLinealidad(elem);
+    const subsec65 = document.getElementById('subsec-6-5');
+    if (subsec65) subsec65.style.display = tieneLin ? '' : 'none';
     const contAguas = document.getElementById('contenedor-aguas-estatico');
     const contRasCa = document.getElementById('contenedor-ras-calcio');
     const contRasMg = document.getElementById('contenedor-ras-magnesio');
@@ -1632,7 +1682,10 @@ window.poblarSeccion6Resultados = function (elem) {
         if (contRasNa) contRasNa.style.display = displayStyle;
     };
 
-    if (elemActivo === 'RAS' && linData?.es_ras_combinado) {
+    if (!tieneLin) {
+        toggleContenedoresRAS('none');
+        if (contAguas) contAguas.style.display = 'none';
+    } else if (elemActivo === 'RAS' && linData?.es_ras_combinado) {
         toggleContenedoresRAS('block');
         contAguas.style.display = 'none';
         renderizarRasDinamico(linData);

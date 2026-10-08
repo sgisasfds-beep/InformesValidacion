@@ -1,162 +1,171 @@
-<section id="sec-incertidumbre" class="space-y-6 animate-fade-in">
-    <!-- Encabezado y Selector Global -->
-    <div
-        class="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-4 rounded-lg border border-slate-300 shadow-sm gap-4">
+<!--
+  VISTA ALTERNATIVA - Sección 6: Estimación de la Incertidumbre
+  Mismos IDs y funciones que incertidumbre.html, por lo que funciona con el mismo
+  seccion-incertidumbre.js (incluye el instrumento por punto de la curva y las pestañas).
+
+  Qué cambia visualmente:
+   - Resultado final (u_c y U expandida) arriba, siempre visible.
+   - Entradas organizadas en 3 pestañas (Patrones / Curva / Muestra) en vez de 3 columnas llenas de formularios.
+   - Curva en formato tabla (una fila por punto) con instrumento por punto.
+   - Interruptores (toggle) en lugar de casillas, y notas informativas en un bloque discreto.
+-->
+<section id="sec-incertidumbre" class="space-y-5 animate-fade-in">
+
+    <!-- ENCABEZADO -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-            <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <span>6. Estimación de la Incertidumbre (GUM / ISO 17025)</span>
-                <span
-                    class="bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-0.5 rounded border border-amber-300">Robusto</span>
+            <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2 flex-wrap">
+                <span>6. Estimación de la Incertidumbre</span>
+                <span class="bg-amber-100 text-amber-800 text-[11px] font-bold px-2 py-0.5 rounded-full border border-amber-300">GUM / ISO 17025</span>
             </h2>
-            <p class="text-xs text-slate-500">Cálculo de incertidumbres Tipo A y Tipo B (Patrones, Material Volumétrico,
-                Balanza, Curva y Toma de Muestra).</p>
+            <p class="text-xs text-slate-500 mt-0.5">Tipo A y Tipo B: patrones, material volumétrico, balanza, curva y toma de muestra.</p>
         </div>
-        <div class="flex items-center space-x-3 self-end md:self-auto">
-            <label class="font-semibold text-sm text-slate-700">Elemento:</label>
+        <div class="flex items-center gap-2 self-end md:self-auto bg-white border border-slate-200 rounded-xl pl-3 pr-1.5 py-1.5 shadow-sm">
+            <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Elemento</label>
             <select id="selectElementoGlobal" onchange="window.cambiarElementoGlobal(this.value)"
-                class="border border-slate-300 px-4 py-2 rounded font-bold text-blue-700 bg-slate-50 outline-none shadow-sm cursor-pointer"></select>
+                class="border-0 bg-slate-50 px-3 py-1.5 rounded-lg font-bold text-blue-700 outline-none cursor-pointer"></select>
         </div>
     </div>
 
-    <!-- Panel de Configuración de Entradas Tipo B -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- RESULTADO FINAL (siempre visible) -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-4 rounded-xl shadow">
+            <div class="text-[11px] font-semibold uppercase tracking-wider opacity-80">Incertidumbre combinada relativa (u<sub>c, rel</sub>)</div>
+            <div id="val-uc-total" class="text-3xl font-extrabold font-mono mt-1">0.00000</div>
+            <div class="text-[11px] opacity-75 mt-1">Raíz de la suma de varianzas relativas</div>
+        </div>
+        <div class="bg-gradient-to-br from-emerald-600 to-teal-700 text-white p-4 rounded-xl shadow">
+            <div class="text-[11px] font-semibold uppercase tracking-wider opacity-80">Incertidumbre expandida relativa (U<sub>rel</sub> = 2 · u<sub>c, rel</sub>)</div>
+            <div id="val-u-expandida" class="text-3xl font-extrabold font-mono mt-1">± 0.00000</div>
+            <div class="text-[11px] opacity-75 mt-1">Factor de cobertura k = 2 (95 % de confianza)</div>
+        </div>
+        <div class="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex flex-col justify-center items-start">
+            <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Expresada como porcentaje</div>
+            <div id="val-u-expandida-porc" class="text-2xl font-extrabold text-emerald-700 mt-1">± 0.00% del valor medido</div>
+            <div class="text-[11px] text-slate-400 mt-1">Se actualiza en tiempo real al cambiar cualquier dato.</div>
+        </div>
+    </div>
 
-        <!-- Tarjeta 1: Patrón y Preparación de Trabajo -->
-        <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300 space-y-4 flex flex-col justify-between">
+    <!-- ENTRADAS EN PESTAÑAS -->
+    <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+
+        <div class="flex border-b border-slate-200 bg-slate-50 overflow-x-auto" role="tablist">
+            <button type="button" role="tab" data-inc-tab="patron" aria-selected="true"
+                onclick="window.cambiarTabIncertidumbre('patron')"
+                class="px-5 py-3 text-sm font-semibold border-b-2 -mb-px whitespace-nowrap transition cursor-pointer border-indigo-600 text-indigo-700 bg-white">
+                <span class="inline-flex items-center justify-center w-5 h-5 mr-1.5 rounded-full bg-indigo-100 text-indigo-700 text-[11px] font-bold">1</span>Patrón y preparación
+            </button>
+            <button type="button" role="tab" data-inc-tab="curva" aria-selected="false"
+                onclick="window.cambiarTabIncertidumbre('curva')"
+                class="px-5 py-3 text-sm font-semibold border-b-2 -mb-px whitespace-nowrap transition cursor-pointer border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/60">
+                <span class="inline-flex items-center justify-center w-5 h-5 mr-1.5 rounded-full bg-indigo-100 text-indigo-700 text-[11px] font-bold">2</span>Curva de calibración
+            </button>
+            <button type="button" role="tab" data-inc-tab="muestra" aria-selected="false"
+                onclick="window.cambiarTabIncertidumbre('muestra')"
+                class="px-5 py-3 text-sm font-semibold border-b-2 -mb-px whitespace-nowrap transition cursor-pointer border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/60">
+                <span class="inline-flex items-center justify-center w-5 h-5 mr-1.5 rounded-full bg-indigo-100 text-indigo-700 text-[11px] font-bold">3</span>Tratamiento de la muestra
+            </button>
+        </div>
+
+        <!-- PESTAÑA 1: PATRÓN -->
+        <div data-inc-panel="patron" class="p-5 space-y-5">
+            <label class="flex items-center justify-between gap-4 p-3.5 bg-slate-50 rounded-lg border border-slate-200 cursor-pointer">
+                <span>
+                    <span class="block text-sm font-semibold text-slate-700">¿Usa patrón certificable (CRM)?</span>
+                    <span class="block text-[11px] text-slate-400">Si se activa, aporta una incertidumbre relativa combinada de 2/1000 (0.00200).</span>
+                </span>
+                <span class="relative inline-flex shrink-0">
+                    <input type="checkbox" id="checkPatronCert" onchange="window.calcularIncertidumbre()" class="sr-only peer" checked>
+                    <span class="w-11 h-6 bg-slate-300 rounded-full peer-checked:bg-indigo-600 transition"></span>
+                    <span class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition peer-checked:translate-x-5"></span>
+                </span>
+            </label>
+
             <div>
-                <h3 class="font-bold text-slate-800 text-base border-b pb-2 text-indigo-700">1. Patrón y Patrones de
-                    Trabajo</h3>
-
-                <div class="flex items-center justify-between p-3 bg-slate-50 rounded border border-slate-200 mt-3">
-                    <span class="text-sm font-semibold text-slate-700">¿Usa Patrón Certificable (CRM)?</span>
-                    <input type="checkbox" id="checkPatronCert" onchange="window.calcularIncertidumbre()"
-                        class="w-5 h-5 text-blue-600 rounded cursor-pointer" checked>
-                </div>
-                <p class="text-[11px] text-slate-400 italic mt-1">Si se activa, aporta una incertidumbre relativa
-                    combinada de 2/1000 (0.00200).</p>
-
-                <div class="space-y-3 pt-3 border-t border-slate-100 mt-3">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Preparación del Patrón de
-                            Trabajo</span>
-                        <button type="button" onclick="window.agregarPreparacionTrabajo()"
-                            class="text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded px-2.5 py-1 transition cursor-pointer">
-                            + Agregar preparación
-                        </button>
+                <div class="flex items-center justify-between gap-3 flex-wrap">
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-800">Preparación del patrón de trabajo</h3>
+                        <p class="text-[11px] text-slate-400 max-w-2xl">Una preparación por cada patrón (p. ej. 250, 50 y 5 mg/L). Las marcadas como
+                            <b>patrón de control</b> se combinan en una sola fila del presupuesto; las demás se muestran por separado.</p>
                     </div>
-                    <p class="text-[11px] text-slate-400 italic">Agregue una preparación por cada patrón
-                        (p. ej. 250, 50 y 5 mg/L). Las que se marquen como <b>patrón de control</b> se combinan en una
-                        sola fila (Patrones de Control) del presupuesto; las demás se muestran por separado.</p>
-
-                    <!-- Inyectado dinámicamente por renderizarPreparacionesTrabajo() -->
-                    <div id="contenedorPreparaciones" class="space-y-3"></div>
+                    <button type="button" onclick="window.agregarPreparacionTrabajo()"
+                        class="text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg px-3 py-2 shadow-sm transition cursor-pointer">
+                        + Agregar preparación
+                    </button>
                 </div>
+                <!-- Inyectado dinámicamente por renderizarPreparacionesTrabajo() -->
+                <div id="contenedorPreparaciones" class="grid grid-cols-1 xl:grid-cols-2 gap-4 mt-3"></div>
             </div>
         </div>
 
-        <!-- Tarjeta 2: Curva de Calibración -->
-        <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300 space-y-4 flex flex-col justify-between">
-            <div>
-                <h3 class="font-bold text-slate-800 text-base border-b pb-2 text-indigo-700">2. Diluciones Curva de
-                    Calibración</h3>
-                <p class="text-xs text-slate-500 mt-2">Asigne el material volumétrico usado para generar los estándares.
-                    El sistema sumará los errores de dilución e interpolará la dispersión por regresión lineal.</p>
-
-                <div class="space-y-3 mt-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600">Instrumento de Adición en
-                            Curva:</label>
-                        <select id="selInstCurva" onchange="window.calcularIncertidumbre()"
-                            class="w-full border border-slate-300 rounded p-2 text-sm font-semibold bg-slate-50 mt-1 cursor-pointer">
-                            <option value="pipeta">Pipetas Aforadas Según Volumen</option>
-                            <option value="trans_100_1000" selected>Transferpipeta (100 a 1000 µL) - U: 0.7511</option>
-                            <option value="trans_1_10ml">Transferpipeta (1 a 10 mL) - U: 0.0080</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600">Volumen Final Balones de Curva
-                            (mL):</label>
-                        <select id="selVolFinalCurva" onchange="window.calcularIncertidumbre()"
-                            class="w-full border border-slate-300 rounded p-2 text-sm font-semibold bg-slate-50 mt-1 cursor-pointer">
-                            <option value="10">10 mL (Balón Aforado)</option>
-                            <option value="25">25 mL (Balón Aforado)</option>
-                            <option value="50" selected>50 mL (±0.100 mL)</option>
-                            <option value="100">100 mL (±0.100 mL)</option>
-                        </select>
-                    </div>
+        <!-- PESTAÑA 2: CURVA -->
+        <div data-inc-panel="curva" class="hidden p-5 space-y-4">
+            <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
+                <div>
+                    <h3 class="text-sm font-bold text-slate-800">Diluciones de la curva de calibración</h3>
+                    <p class="text-[11px] text-slate-400 max-w-2xl">Elija el instrumento de cada punto e ingrese su alícuota y volumen final.
+                        Se calcula la incertidumbre de la preparación (4.1) y, por separado, la de la interpolación por regresión lineal (4.2).</p>
+                </div>
+                <div class="flex flex-wrap gap-1.5 text-[11px]">
+                    <span class="bg-blue-50 text-blue-800 border border-blue-200 rounded-full px-2.5 py-1">4.1 u = √(Σ u<sub>punto</sub>²)</span>
+                    <span class="bg-blue-50 text-blue-800 border border-blue-200 rounded-full px-2.5 py-1">u<sub>punto</sub> = √(u<sub>alíc</sub>² + u<sub>vf</sub>²)</span>
+                    <span class="bg-blue-50 text-blue-800 border border-blue-200 rounded-full px-2.5 py-1">4.2 s<sub>res</sub></span>
                 </div>
             </div>
 
-            <div class="p-3 bg-blue-50/70 rounded border border-blue-200 text-xs text-blue-800 space-y-1 mt-4">
-                <div class="font-bold">Cálculo Automático por Regresión:</div>
-                <div>• Desviación Estándar Residual (s<sub>res</sub>)</div>
-                <div>• Dispersión experimental en extremos de concentración</div>
-            </div>
+            <!-- El instrumento ya no es único (se elige por punto). Se conserva oculto por compatibilidad. -->
+            <div id="contenedorInstCurva" class="hidden"></div>
+
+            <!-- Inyectado dinámicamente por renderizarPuntosCurva() (diseño "wide": una fila por punto) -->
+            <div id="contenedorPuntosCurva" data-layout="wide" class="max-h-[34rem] overflow-y-auto pr-1"></div>
         </div>
 
-        <!-- Tarjeta 3: Tratamiento de la Muestra -->
-        <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-300 space-y-4 flex flex-col justify-between">
-            <div>
-                <h3 class="font-bold text-slate-800 text-base border-b pb-2 text-indigo-700">3. Tratamiento de la
-                    Muestra</h3>
-                <p class="text-xs text-slate-500 mt-2">Evaluación de la repetibilidad del analista y el error en la toma
-                    de muestra (alícuota volumétrica o pesada) y su volumen final.</p>
+        <!-- PESTAÑA 3: MUESTRA -->
+        <div data-inc-panel="muestra" class="hidden p-5">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="space-y-4">
+                    <p class="text-[11px] text-slate-400">Repetibilidad del analista y error en la toma de muestra (alícuota volumétrica o pesada) y su volumen final.</p>
 
-                <div class="space-y-3 mt-4">
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600">Analista para Incertidumbre Tipo A
-                            (LCM):</label>
+                        <label class="block text-xs font-semibold text-slate-600">Analista para incertidumbre Tipo A (LCM)</label>
                         <select id="selAnalistaTipoA" onchange="window.calcularIncertidumbre()"
-                            class="w-full border border-slate-300 rounded p-1.5 text-sm font-semibold bg-slate-50 mt-1 cursor-pointer">
+                            class="w-full border border-slate-300 rounded-lg p-2 text-sm font-semibold bg-white mt-1 cursor-pointer">
                             <option value="Analista 1">Analista 1</option>
                             <option value="Analista 2">Analista 2</option>
-                            <option value="global">Global (Ambos Analistas)</option>
+                            <option value="global">Global (ambos analistas)</option>
                         </select>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-2 mt-2">
+                    <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-xs font-semibold text-slate-600">Alícuota (mL):</label>
-                            <input type="number" id="inpAlicuotaMuestra" value="10" step="0.1"
-                                oninput="window.calcularIncertidumbre()"
-                                class="w-full border border-slate-300 rounded p-1.5 text-sm font-mono font-bold text-blue-600">
+                            <label class="block text-xs font-semibold text-slate-600">Alícuota (mL)</label>
+                            <input type="number" id="inpAlicuotaMuestra" value="10" step="0.1" oninput="window.calcularIncertidumbre()"
+                                class="w-full border border-slate-300 rounded-lg p-2 text-sm font-mono font-bold text-blue-600 mt-1">
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-slate-600">Peso (g) <span
-                                    class="text-[10px] text-amber-600 font-normal">(0=Volumen)</span>:</label>
-                            <input type="number" id="inpPesoMuestra" value="0" step="0.0001"
-                                oninput="window.calcularIncertidumbre()"
-                                class="w-full border border-slate-300 rounded p-1.5 text-sm font-mono font-bold text-emerald-600">
+                            <label class="block text-xs font-semibold text-slate-600">Peso (g) <span class="text-[10px] text-amber-600 font-normal">(0 = volumen)</span></label>
+                            <input type="number" id="inpPesoMuestra" value="0" step="0.0001" oninput="window.calcularIncertidumbre()"
+                                class="w-full border border-slate-300 rounded-lg p-2 text-sm font-mono font-bold text-emerald-600 mt-1">
                         </div>
                     </div>
 
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600">Instrumento de Alícuota:</label>
-                        <select id="selInstMuestra" onchange="window.calcularIncertidumbre()"
-                            class="w-full border border-slate-300 rounded p-1.5 text-xs font-semibold bg-slate-50 mt-1 cursor-pointer">
-                            <option value="pipeta">Pipeta Aforada (Tabla Metrológica)</option>
-                            <option value="trans_0.5_10">Transferpipeta (0.5 a 10 µL) - U: 0.0085</option>
-                            <option value="trans_10_100">Transferpipeta (10 a 100 µL) - U: 0.0801</option>
-                            <option value="trans_100_1000">Transferpipeta (100 a 1000 µL) - U: 0.7511</option>
-                            <option value="trans_1_10ml">Transferpipeta (1 a 10 mL) - U: 0.0080</option>
-                            <option value="balanza">Balanza Analítica</option>
-                        </select>
-                    </div>
+                    <!-- Inyectado dinámicamente por renderizarSelectorInstrumentoMuestra() -->
+                    <div id="contenedorInstMuestra"></div>
 
-                    <!-- Checkbox de Volumen Final -->
-                    <div class="flex items-center justify-between p-3 bg-slate-50 rounded border border-slate-200 mt-3">
+                    <label class="flex items-center justify-between gap-4 p-3 bg-slate-50 rounded-lg border border-slate-200 cursor-pointer">
                         <span class="text-sm font-semibold text-slate-700">¿Muestra llevada a volumen final?</span>
-                        <input type="checkbox" id="checkVolFinalMuestra"
-                            onchange="window.toggleVolFinalMuestra(); window.calcularIncertidumbre();"
-                            class="w-5 h-5 text-blue-600 rounded cursor-pointer">
-                    </div>
+                        <span class="relative inline-flex shrink-0">
+                            <input type="checkbox" id="checkVolFinalMuestra"
+                                onchange="window.toggleVolFinalMuestra(); window.calcularIncertidumbre();" class="sr-only peer">
+                            <span class="w-11 h-6 bg-slate-300 rounded-full peer-checked:bg-indigo-600 transition"></span>
+                            <span class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition peer-checked:translate-x-5"></span>
+                        </span>
+                    </label>
 
-                    <!-- Selector oculto por defecto -->
                     <div id="divVolFinalMuestra" style="display: none;">
-                        <label class="block text-xs font-semibold text-slate-600">Volumen Final Muestra (mL):</label>
+                        <label class="block text-xs font-semibold text-slate-600">Volumen final de la muestra (mL)</label>
                         <select id="selVolFinalMuestra" onchange="window.calcularIncertidumbre()"
-                            class="w-full border border-slate-300 rounded p-1.5 text-xs font-semibold bg-slate-50 mt-1 cursor-pointer">
+                            class="w-full border border-slate-300 rounded-lg p-2 text-sm font-semibold bg-white mt-1 cursor-pointer">
                             <option value="10">10 mL (±0.025 mL)</option>
                             <option value="25">25 mL (±0.040 mL)</option>
                             <option value="50" selected>50 mL (±0.100 mL)</option>
@@ -167,97 +176,65 @@
                         </select>
                     </div>
                 </div>
-            </div>
 
-            <div
-                class="p-3 bg-emerald-50/70 rounded border border-emerald-200 text-xs text-emerald-900 mt-4 space-y-1.5 shadow-sm">
-                <div class="font-bold flex items-center gap-1.5 text-emerald-800">
-                    <span class="text-sm">💡</span>
-                    <span>Trazabilidad Metrológica</span>
+                <!-- Notas informativas -->
+                <div class="space-y-3 self-start">
+                    <div class="p-3.5 bg-emerald-50/70 rounded-lg border border-emerald-200">
+                        <div class="text-xs font-bold text-emerald-800 flex items-center gap-1.5"><span>💡</span>Trazabilidad metrológica</div>
+                        <p class="text-[11px] leading-relaxed text-slate-600 mt-1">El módulo reporta la <b>incertidumbre expandida relativa (u<sub>rel</sub> / %)</b>
+                            combinando la muestra, la dilución y el instrumento utilizado.</p>
+                    </div>
+                    <div class="p-3.5 bg-purple-50/70 rounded-lg border border-purple-200">
+                        <div class="text-xs font-bold text-purple-800 flex items-center gap-1.5"><span>🧪</span>Componente 6: estandarización del titulante</div>
+                        <p class="text-[11px] leading-relaxed text-slate-600 mt-1">Se calcula automáticamente desde la pestaña <b>Estandarización</b> de este parámetro:
+                            toma la primera tabla de cada solución con rol <b>Titulante</b> y el triplicado de volumen de solución valorada (o peso) y volumen de titulante.
+                            El instrumento usado en cada caso se elige en esas pestañas.</p>
+                    </div>
                 </div>
-                <p class="text-[11px] leading-relaxed text-slate-600">El módulo reporta la <b>Incertidumbre Expandida
-                        Relativa (u<sub>rel</sub> / %)</b> combinando la muestra, dilución e instrumento utilizado.</p>
-            </div>
-
-            <div class="p-3 bg-purple-50/70 rounded border border-purple-200 text-xs text-purple-900 mt-4 space-y-1.5 shadow-sm">
-                <div class="font-bold flex items-center gap-1.5 text-purple-800">
-                    <span class="text-sm">🧪</span>
-                    <span>Componente 6: Estandarización del Titulante</span>
-                </div>
-                <p class="text-[11px] leading-relaxed text-slate-600">Se calcula automáticamente a partir de la pestaña
-                    <b>Estandarización</b> para este mismo parámetro: toma la primera tabla de cada solución con rol
-                    <b>Titulante</b>, y el triplicado de Volumen Sln Valorada (o Peso) y Volumen Titulante. El
-                    instrumento usado en cada caso (Pipeta/Balón y Bureta/Transferpipeta) se elige directamente en las
-                    pestañas de la sección Estandarización.</p>
             </div>
         </div>
-
     </div>
 
-    <!-- Sección de Resultados: Resumen Ejecutivo y Gráfico -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-
-        <!-- Tabla de Presupuesto de Incertidumbre -->
-        <div
-            class="bg-white p-5 rounded-lg shadow-sm border border-slate-300 lg:col-span-2 flex flex-col justify-between h-full">
-            <div>
-                <h3 class="font-bold text-slate-800 mb-3 text-base border-b pb-2">Presupuesto y Resumen de
-                    Incertidumbres Combinadas</h3>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm text-left border-collapse border border-slate-300">
-                        <thead>
-                            <tr class="bg-slate-100 text-slate-700 font-bold border-b border-slate-300">
-                                <th class="border border-slate-300 p-2.5">Componente / Fuente de Incertidumbre</th>
-                                <th class="border border-slate-300 p-2.5 text-center">Tipo</th>
-                                <th class="border border-slate-300 p-2.5 text-right">Valor / s</th>
-                                <th class="border border-slate-300 p-2.5 text-right font-mono">u<sub>rel</sub> Comb.
-                                </th>
-                                <th class="border border-slate-300 p-2.5 text-right">% Varianza</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tablaResumenIncertidumbre" class="divide-y divide-slate-200 font-medium">
-                            <!-- Inyectado dinámicamente -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Tarjetas de Incertidumbre Final -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 pt-4 border-t border-slate-200">
-                <div class="bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-4 rounded-lg shadow">
-                    <div class="text-xs font-semibold uppercase tracking-wider opacity-80">Incertidumbre Combinada
-                        Relativa (u<sub>c, rel</sub>)</div>
-                    <div id="val-uc-total" class="text-3xl font-extrabold font-mono mt-1">0.00000</div>
-                    <div class="text-[11px] opacity-75 mt-1">Raíz de la suma de varianzas relativas</div>
-                </div>
-                <div class="bg-gradient-to-br from-emerald-600 to-teal-700 text-white p-4 rounded-lg shadow">
-                    <div class="text-xs font-semibold uppercase tracking-wider opacity-80">Incertidumbre Expandida
-                        Relativa (U<sub>rel</sub> = 2 · u<sub>c, rel</sub>)</div>
-                    <div id="val-u-expandida" class="text-3xl font-extrabold font-mono mt-1">± 0.00000</div>
-                    <div id="val-u-expandida-porc"
-                        class="text-xs font-bold text-amber-300 bg-black/20 inline-block px-2.5 py-0.5 rounded mt-1.5 shadow-inner">
-                        ± 0.00% del valor medido</div>
-                    <div class="text-[11px] opacity-75 mt-1">Factor de cobertura k = 2 (95% de confianza)</div>
-                </div>
+    <!-- RESULTADOS: PRESUPUESTO + GRÁFICO -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+        <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 lg:col-span-2">
+            <h3 class="font-bold text-slate-800 text-sm mb-3">Presupuesto de incertidumbres</h3>
+            <div class="overflow-x-auto rounded-lg border border-slate-200">
+                <table class="w-full text-sm text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-600 text-xs uppercase tracking-wide">
+                            <th class="p-2.5 font-bold">Componente / fuente</th>
+                            <th class="p-2.5 font-bold text-center">Tipo</th>
+                            <th class="p-2.5 font-bold text-right">Valor / s</th>
+                            <th class="p-2.5 font-bold text-right">u<sub>rel</sub> comb.</th>
+                            <th class="p-2.5 font-bold text-right">% varianza</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaResumenIncertidumbre" class="divide-y divide-slate-100 font-medium">
+                        <!-- Inyectado dinámicamente -->
+                    </tbody>
+                </table>
             </div>
         </div>
 
-        <!-- Gráfico Conceptual: Contribución a la Varianza -->
-        <div
-            class="bg-white p-5 rounded-lg shadow-sm border border-slate-300 flex flex-col items-center justify-between h-full">
-            <div class="w-full">
-                <h3 class="font-bold text-slate-800 mb-1 text-base w-full text-left border-b pb-2">Contribución a la
-                    Varianza</h3>
-                <p class="text-xs text-slate-400 mb-4 w-full text-left">Impacto porcentual (u<sub>i</sub>² /
-                    u<sub>c</sub>²) de cada etapa en el error final.</p>
-            </div>
-            <div class="relative h-[260px] w-full flex items-center justify-center my-auto">
+        <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+            <h3 class="font-bold text-slate-800 text-sm">Contribución a la varianza</h3>
+            <p class="text-[11px] text-slate-400 mb-3">Impacto porcentual (u<sub>i</sub>² / u<sub>c</sub>²) de cada etapa en el error final.</p>
+            <div class="relative h-[260px] w-full flex items-center justify-center">
                 <canvas id="chartIncertidumbre"></canvas>
             </div>
-            <div class="w-full text-center mt-2 pt-2 border-t border-slate-100 text-[11px] text-slate-400">
-                Gráfico dinámico actualizado en tiempo real
-            </div>
         </div>
+    </div>
 
+    <!-- Ventana emergente: selección de volumen (Pipeta Aforada / Probeta) o equipo (Transferpipeta) -->
+    <div id="modalInstrumentoPicker" class="hidden fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
+            <div class="flex items-start justify-between mb-1">
+                <h3 id="modalInstTitulo" class="font-bold text-slate-800 text-lg">Selecciona el instrumento</h3>
+                <button onclick="window.cerrarModalInstrumento()" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
+            </div>
+            <p id="modalInstSubtitulo" class="text-xs text-slate-500 mb-4"></p>
+            <div id="modalInstGrid" class="grid grid-cols-3 sm:grid-cols-4 gap-3 max-h-80 overflow-y-auto pr-1"></div>
+        </div>
     </div>
 </section>

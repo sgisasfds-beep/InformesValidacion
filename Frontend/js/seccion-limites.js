@@ -17,7 +17,8 @@ window.renderizarLimites = function () {
     document.getElementById('stat-lod').innerText = data.lod_posible;
     document.getElementById('stat-loq').innerText = data.loq_posible;
     document.getElementById('stat-teorico').innerText = data.teorico_lcm;
-    document.getElementById('stat-error').innerText = data.lcm.global.error_pct + '%';
+    const hayLCM = window.tieneDatosControl ? window.tieneDatosControl(window.elementoActivo, 'lcm') : !!data.lcm;
+    document.getElementById('stat-error').innerText = (hayLCM && data.lcm?.global?.error_pct !== undefined) ? data.lcm.global.error_pct + '%' : '--';
 
     // Fisicoquímico: un único blanco (Analista 1). El backend lo indica con mb.solo_analista_1.
     const soloMBA1 = data.mb.solo_analista_1 === true;
@@ -44,16 +45,20 @@ window.renderizarLimites = function () {
 // VISTA NORMAL (Instrumental / Concentración)
 // ----------------------------------------------------------------------
 window.renderizarLimitesFisicoquimico = function (data, soloMBA1) {
-    const filaStats = (ctrl, grupo, st, destacada) => `
+    const filaStats = (ctrl, grupo, st, destacada) => !st ? '' : `
         <tr class="${destacada ? 'bg-blue-50/40 font-bold' : 'hover:bg-slate-50'}"><td class="border border-slate-300 p-2 ${destacada ? '' : 'font-semibold bg-slate-50'}">${ctrl}</td><td class="border border-slate-300 p-2">${grupo}</td><td class="border border-slate-300 p-2 font-mono">${st.promedio}</td><td class="border border-slate-300 p-2 font-mono">${st.desviacion}</td><td class="border border-slate-300 p-2 font-mono">${st.cv}%</td></tr>`;
+
+    // Puede que el método no tenga LCM: en ese caso solo se muestran los blancos
+    const lcmD = data.lcm || {};
+    const hayLCM = window.tieneDatosControl ? window.tieneDatosControl(window.elementoActivo, 'lcm') : !!data.lcm;
 
     const tbody = document.getElementById('tablaResultados');
     tbody.innerHTML =
         filaStats('MB', 'Analista 1', data.mb.analista_1, false) +
         (soloMBA1 ? '' : filaStats('MB', 'Analista 2', data.mb.analista_2, false) + filaStats('MB', 'Global', data.mb.global, true)) +
-        filaStats('LCM', 'Analista 1', data.lcm.analista_1, false) +
-        filaStats('LCM', 'Analista 2', data.lcm.analista_2, false) +
-        filaStats('LCM', 'Global', data.lcm.global, true);
+        (hayLCM ? filaStats('LCM', 'Analista 1', lcmD.analista_1, false) +
+            filaStats('LCM', 'Analista 2', lcmD.analista_2, false) +
+            filaStats('LCM', 'Global', lcmD.global, true) : '');
 
     // Cabecera de la tabla de datos brutos: ocultar la columna MB del Analista 2
     const thMB = document.getElementById('th-mb');
@@ -66,8 +71,8 @@ window.renderizarLimitesFisicoquimico = function (data, soloMBA1) {
         let filasHTML = '';
         const valsMBA1 = data.mb.analista_1.valores || [];
         const valsMBA2 = data.mb.analista_2.valores || [];
-        const valsLCMA1 = data.lcm.analista_1.valores || [];
-        const valsLCMA2 = data.lcm.analista_2.valores || [];
+        const valsLCMA1 = lcmD.analista_1?.valores || [];  // (vacío si no hay LCM)
+        const valsLCMA2 = lcmD.analista_2?.valores || [];
 
         for (let i = 0; i < 10; i++) {
             const vMB1 = valsMBA1[i] !== undefined ? valsMBA1[i] : '-';
@@ -103,7 +108,13 @@ window.renderizarLimitesFisicoquimico = function (data, soloMBA1) {
         options: { responsive: true, scales: { x: { title: { display: true, text: 'Ensayos' } } } }
     });
 
-    const ctxLCM = document.getElementById('chartLCM').getContext('2d');
+    // Sin LCM: ocultar la tarjeta de la gráfica de LCM
+    const canvasLCM = document.getElementById('chartLCM');
+    const tarjetaLCM = canvasLCM ? canvasLCM.parentElement : null;
+    if (tarjetaLCM) tarjetaLCM.style.display = hayLCM ? '' : 'none';
+    if (!hayLCM) { window.chartLCMInstance = null; return; }
+
+    const ctxLCM = canvasLCM.getContext('2d');
     window.chartLCMInstance = new Chart(ctxLCM, {
         type: 'scatter',
         data: {
@@ -121,7 +132,7 @@ window.renderizarLimitesFisicoquimico = function (data, soloMBA1) {
 // VISTA TITULADOS (Volumetría)
 // ----------------------------------------------------------------------
 window.renderizarLimitesTitulados = function (data, soloMBA1) {
-    const filaStats = (ctrl, grupo, st, destacada) => `
+    const filaStats = (ctrl, grupo, st, destacada) => !st ? '' : `
         <tr class="${destacada ? 'bg-blue-50/40 font-bold' : 'hover:bg-slate-50'}">
             <td class="border border-slate-300 p-2 ${destacada ? '' : 'font-semibold bg-slate-50'}">${ctrl}</td>
             <td class="border border-slate-300 p-2">${grupo}</td>
@@ -136,9 +147,9 @@ window.renderizarLimitesTitulados = function (data, soloMBA1) {
         tbResumen.innerHTML =
             filaStats('MB', 'Analista 1', data.mb.analista_1, false) +
             (soloMBA1 ? '' : filaStats('MB', 'Analista 2', data.mb.analista_2, false) + filaStats('MB', 'Global', data.mb.global, true)) +
-            filaStats('LCM', 'Analista 1', data.lcm.analista_1, false) +
-            filaStats('LCM', 'Analista 2', data.lcm.analista_2, false) +
-            filaStats('LCM', 'Global', data.lcm.global, true);
+            filaStats('LCM', 'Analista 1', data.lcm?.analista_1, false) +
+            filaStats('LCM', 'Analista 2', data.lcm?.analista_2, false) +
+            filaStats('LCM', 'Global', data.lcm?.global, true);
     }
 
     // Datos brutos de titulación
@@ -168,5 +179,5 @@ window.renderizarLimitesTitulados = function (data, soloMBA1) {
             }).join('');
     };
 
-    tbBrutos.innerHTML = filasDe('MB', data.mb.raw) + filasDe('LCM', data.lcm.raw);
+    tbBrutos.innerHTML = filasDe('MB', data.mb.raw) + filasDe('LCM', data.lcm?.raw);
 };

@@ -18,7 +18,7 @@ window.poblarSelectorLinealidad = function () {
 
     Object.keys(window.datosGlobales).forEach(param => {
         // Solo agregar al selector si el elemento tiene datos de linealidad
-        if (window.datosGlobales[param].linealidad) {
+        if (window.tieneLinealidad ? window.tieneLinealidad(param) : window.datosGlobales[param].linealidad) {
             const opt = document.createElement('option');
             opt.value = param;
             opt.textContent = param;
@@ -39,7 +39,12 @@ window.poblarSelectorLinealidad = function () {
 
 window.renderizarDatosLinealidad = function (parametro) {
     // Validar que exista la linealidad en el objeto global para este parámetro
-    if (!parametro || !window.datosGlobales[parametro] || !window.datosGlobales[parametro].linealidad) return;
+    if (!parametro || !window.datosGlobales[parametro] || !window.datosGlobales[parametro].linealidad) {
+        // Sin linealidad: no dejar visibles los datos del parámetro anterior
+        const cont = document.getElementById('contenidoLinealidad');
+        if (cont) cont.classList.add('hidden');
+        return;
+    }
 
     window.parametroActivoLin = parametro;
 
@@ -199,4 +204,3 @@ window.renderizarDatosLinealidad = function (parametro) {
         }
     });
 };
-
