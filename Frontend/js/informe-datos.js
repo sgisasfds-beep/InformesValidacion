@@ -594,6 +594,14 @@ window.guardarMetadatosYCompilar = function () {
     setTimeout(() => {
         const incData = dataElem.resultadoIncertidumbre || null;
 
+        // Sin resultado calculado (no se ha abierto la pestaña de Incertidumbre) no se dejan tabla/figura vacías
+        const tblInc = document.getElementById('inf-tabla-resumen-incertidumbre');
+        const cvInc = document.getElementById('chart-inf-incertidumbre');
+        const contTblInc = tblInc && (tblInc.closest('.mantener-junto') || tblInc);
+        const contCvInc = cvInc && (cvInc.closest('.mantener-junto') || cvInc.parentElement);
+        if (contTblInc) contTblInc.style.display = incData ? '' : 'none';
+        if (contCvInc) contCvInc.style.display = incData ? '' : 'none';
+
         if (incData) {
             const ucDestino = document.getElementById('inf-val-uc-total');
             if (ucDestino) ucDestino.innerText = incData.u_c_total.toFixed(5);
@@ -690,6 +698,21 @@ window.guardarMetadatosYCompilar = function () {
     setTxt('prev-sec-recuperacion-matriz', dataElem.matriz_texto || `Se determinó el porcentaje de recuperación en muestras fortificadas cumpliendo satisfactoriamente con el criterio normativo.`);
     setTxt('prev-sec-rango-trabajo', dataElem.rango_trabajo_texto || window.generarInterpretacionRT(elemActivo));
     setTxt('prev-sec-incertidumbre', dataElem.incertidumbre_texto || `Se estructuraron las fuentes contribuyentes. La estimación final se expresa como incertidumbre expandida U = 2 * u_c * C_muestra, equivalente a un ± ${u_c_total_val} (± ${u_expandida_porc_val}%).`);
+
+    // Sección 7: ocultar los bloques de texto de atributos que no se evaluaron
+    const bloque7 = (id, visible) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const cont = el.closest('tr, li, [data-bloque]') || el;
+        cont.style.display = visible ? '' : 'none';
+    };
+    bloque7('prev-sec-loq', hayLcmAct);
+    bloque7('prev-sec-linealidad', tieneLinAct);
+    bloque7('prev-sec-sensibilidad', tieneLinAct);
+    bloque7('prev-sec-veracidad', hayVerAct);
+    bloque7('prev-sec-precision', hayPrecAct);
+    bloque7('prev-sec-recuperacion-matriz', hayMuestrasAct);
+    bloque7('prev-sec-rango-trabajo', typeof window.tieneRT === 'function' ? window.tieneRT(elemActivo) : true);
 
     // 4. Sección 8: Conclusiones Técnicas
     const concContainer = document.getElementById('prev-conclusiones');
@@ -992,10 +1015,13 @@ window.renderizarRangoTrabajoInforme = function (elem) {
     if (typeof window.pintarStatsRT === 'function') window.pintarStatsRT('inf-rt', r);
     if (!tbody) return;
 
+    const secRT = tbody.closest('[id^="subsec-"]') || tbody.closest('.mantener-junto');
     if (!r) {
-        tbody.innerHTML = `<tr><td colspan="11" class="border border-slate-300 p-3 text-slate-500 italic">No se registraron lecturas del control de Rango de Trabajo para ${elem}.</td></tr>`;
+        tbody.innerHTML = '';
+        if (secRT) secRT.style.display = 'none';
         return;
     }
+    if (secRT) secRT.style.display = '';
 
     const celda = 'border border-slate-300 p-1.5';
     tbody.innerHTML = r.datos.map(d => `
@@ -1154,6 +1180,10 @@ window.poblarSeccion6Resultados = function (elem) {
     mostrarSi('inf-th-lcm', hayLCM);
     mostrarSi('inf-th-lcm-a1', hayLCM);
     mostrarSi('inf-th-lcm-a2', hayLCM);
+    ['inf-stat-teorico-lcm', 'inf-stat-error-lcm'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.parentElement) el.parentElement.style.display = hayLCM ? '' : 'none';
+    });
     const canvasLcmFig = document.getElementById('chart-inf-lcm');
     if (canvasLcmFig && canvasLcmFig.closest('.mantener-junto')) canvasLcmFig.closest('.mantener-junto').style.display = hayLCM ? '' : 'none';
 
@@ -1177,7 +1207,8 @@ window.poblarSeccion6Resultados = function (elem) {
         const fechasMBA1 = window.fechasControlPorAnalista(data.mb, 'Analista 1');
         const fechasMBA2 = window.fechasControlPorAnalista(data.mb, 'Analista 2');
 
-        for (let i = 0; i < 10; i++) {
+        const nFilasMB = Math.max(valsMBA1.length, valsMBA2.length, valsLCMA1.length, valsLCMA2.length);
+        for (let i = 0; i < nFilasMB; i++) {
             htmlRows += `
                 <tr class="hover:bg-slate-50">
                     <td class="border border-slate-300 p-1 font-mono text-[10px] bg-amber-50/50">${fechasMBA1[i] ?? '-'}</td>
@@ -1210,7 +1241,7 @@ window.poblarSeccion6Resultados = function (elem) {
 
     if (window.chartInfLcmInstance) window.chartInfLcmInstance.destroy();
     const ctxLcmInf = document.getElementById('chart-inf-lcm')?.getContext('2d');
-    if (ctxLcmInf && data.lcm?.raw) {
+    if (ctxLcmInf && hayLCM && data.lcm?.raw) {
         window.chartInfLcmInstance = new Chart(ctxLcmInf, {
             type: 'scatter',
             data: {
@@ -1246,7 +1277,7 @@ window.poblarSeccion6Resultados = function (elem) {
         let htmlPrec = '';
         ['lcm', 'ccv', 'ea'].forEach(ctrl => {
             const objPrec = data.precision[ctrl] || data.precision[ctrl.toUpperCase()];
-            if (!objPrec) return;
+            if (!objPrec || !window.tieneDatosControl(elem, ctrl)) return;
 
             const pShapiroA1 = objPrec.normalidad?.shapiro?.analista_1?.p ?? '--';
             const pShapiroA2 = objPrec.normalidad?.shapiro?.analista_2?.p ?? '--';
@@ -1269,6 +1300,9 @@ window.poblarSeccion6Resultados = function (elem) {
             `;
         });
         tbodyConsolidadoPrec.innerHTML = htmlPrec;
+        const tablaPrecCons = tbodyConsolidadoPrec.closest('table');
+        const contPrecCons = tablaPrecCons && (tablaPrecCons.closest('.mantener-junto') || tablaPrecCons);
+        if (contPrecCons) contPrecCons.style.display = htmlPrec ? '' : 'none';
     }
 
     ['lcm', 'ccv', 'ea'].forEach(ctrl => {
@@ -1392,7 +1426,7 @@ window.poblarSeccion6Resultados = function (elem) {
         const objCtrl = data[ctrl] || data[tag] || (data.exactitud && (data.exactitud[ctrl] || data.exactitud[tag]));
         const teo = data[`teorico_${ctrl}`] || data[`teorico_${ctrl.toLowerCase()}`] || data.exactitud?.[ctrl]?.teorico || data.exactitud?.[tag]?.teorico || (ctrl === 'lcm' ? data.teorico_lcm : 1);
 
-        if (ctxExa && objCtrl) {
+        if (ctxExa && objCtrl && dispControles.includes(ctrl)) {
             const vA1 = objCtrl.analista_1?.valores || objCtrl.analista_1 || (objCtrl.raw ? objCtrl.raw.filter(d => d.analista === 'Analista 1').map(d => d.valor) : []);
             const vA2 = objCtrl.analista_2?.valores || objCtrl.analista_2 || (objCtrl.raw ? objCtrl.raw.filter(d => d.analista === 'Analista 2').map(d => d.valor) : []);
             const recA1 = vA1.map(v => teo ? (v / teo) * 100 : 0);
@@ -1486,10 +1520,23 @@ window.poblarSeccion6Resultados = function (elem) {
         // C. Extraer objeto de muestras ambientales desde 'data'
         const datosMuestrasSubmatriz = data.exactitud_muestras || data.muestras || (data.exactitud && data.exactitud.muestras) || {};
 
+        // Solo se muestran las submatrices que tienen registros: las demás desaparecen
+        // (y la numeración de figuras/tablas se recalcula sin huecos).
+        const subsConDatos = submatrices.map(sub => {
+            const backendKey = (window.SUBMATRIZ_BACKEND_KEY && window.SUBMATRIZ_BACKEND_KEY[sub]) || sub;
+            const filas = Array.isArray(datosMuestrasSubmatriz[backendKey]) ? datosMuestrasSubmatriz[backendKey] : [];
+            const f = window.flagsMuestras(filas);
+            return { sub, filas, f, graficable: f.recAdic || f.recDup || f.rpd };
+        }).filter(s => s.filas.length > 0);
+        const subsGraficables = subsConDatos.filter(s => s.graficable);
+        subsGraficables.forEach((s, k) => { s.idxGraf = k; });
+
+        const num = (v, d, suf = '') => (v !== null && v !== undefined && v !== '') ? Number(v).toFixed(d) + suf : '-';
+        const th = (txt, cls = '') => `<th class="border border-slate-300 p-1.5 ${cls}">${txt}</th>`;
+
         let htmlDinamico = '';
 
-        if (submatrices.length > 0) {
-            // 6.3.4 Gráficas de % Recuperación y RPD
+        if (subsGraficables.length > 0) {
             htmlDinamico += `
                 <div id="subsec-6-3-4" class="space-y-2 mantener-junto mt-6">
                     <h4 class="text-xs font-bold text-blue-800 uppercase border-b border-blue-100 pb-1">
@@ -1497,163 +1544,97 @@ window.poblarSeccion6Resultados = function (elem) {
                     </h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
             `;
-
-            submatrices.forEach((sub, idx) => {
+            subsGraficables.forEach((s, k) => {
                 htmlDinamico += `
                         <div class="border border-slate-300 bg-white p-3 rounded mantener-junto shadow-sm">
-                            <h4 class="text-[11px] font-bold text-slate-700 mb-2">Figura 3d-${idx + 1}. Evaluación - ${sub}</h4>
+                            <h4 class="text-[11px] font-bold text-slate-700 mb-2">Figura 3d-${k + 1}. Evaluación - ${s.sub}</h4>
                             <div class="relative w-full h-52">
-                                <canvas id="chart-inf-mues-${idx}"></canvas>
+                                <canvas id="chart-inf-mues-${k}"></canvas>
                             </div>
                         </div>
                 `;
             });
             htmlDinamico += `</div></div>`;
-
-            // 6.3.5+ Tablas de datos por submatriz
-            submatrices.forEach((sub, idx) => {
-                const numSeccion = `6.3.${5 + idx}`;
-                const numTabla = 5 + idx;
-
-                htmlDinamico += `
-                    <div id="subsec-${numSeccion.replace(/\./g, '-')}" class="space-y-2 mt-6 mantener-junto">
-                        <h4 class="text-xs font-bold text-blue-800 uppercase border-b border-blue-100 pb-1">
-                            ${numSeccion} Resultados de Muestras Ambientales - ${sub}
-                        </h4>
-                        <div class="bg-white p-3 rounded shadow-sm border border-slate-300">
-                            <h5 class="text-xs font-bold text-slate-700 mb-2">Tabla ${numTabla}. Datos de Concentración, Recuperación y RPD (${sub})</h5>
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-xs text-center border-collapse border border-slate-300">
-                                    <thead>
-                                        <tr class="bg-slate-100 font-bold text-slate-700 border-b border-slate-300">
-                                            <th class="border border-slate-300 p-1.5 bg-amber-50">Fecha</th>
-                                            <th class="border border-slate-300 p-1.5 bg-slate-200">Réplica #</th>
-                                            <th class="border border-slate-300 p-1.5 bg-slate-200">Analista</th>
-                                            <th class="border border-slate-300 p-1.5">Conc. Muestra</th>
-                                            <th class="border border-slate-300 p-1.5">Conc. Adicionado</th>
-                                            <th class="border border-slate-300 p-1.5">Conc. Duplicado</th>
-                                            <th class="border border-slate-300 p-1.5 bg-blue-50">% Rec. Adicionado</th>
-                                            <th class="border border-slate-300 p-1.5 bg-indigo-50">% Rec. Duplicado</th>
-                                            <th class="border border-slate-300 p-1.5 bg-amber-50">RPD (%)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="inf-tabla-mues-${idx}" class="divide-y divide-slate-300">
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
         }
 
-        // Inyectar HTML generado en el DOM
-        contenedorMuestras.innerHTML = htmlDinamico;
-
-        // D. Poblar datos en las tablas e inicializar gráficos de Chart.js
-        submatrices.forEach((sub, idx) => {
-            const backendKey = (window.SUBMATRIZ_BACKEND_KEY && window.SUBMATRIZ_BACKEND_KEY[sub]) || sub;
-            const filas = datosMuestrasSubmatriz[backendKey] || [];
-
-            // 1. Inyección de filas en la tabla HTML
-            const tbody = document.getElementById(`inf-tabla-mues-${idx}`);
-            if (tbody) {
-                if (filas.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="9" class="p-3 text-slate-400 italic">No hay datos registrados para esta submatriz.</td></tr>`;
-                } else {
-                    tbody.innerHTML = filas.map(r => `
+        // 6.3.5+ Tablas de datos por submatriz (solo columnas con valores)
+        const offsetSec = subsGraficables.length > 0 ? 5 : 4;
+        subsConDatos.forEach((s, idx) => {
+            const numSeccion = `6.3.${offsetSec + idx}`;
+            const numTabla = 5 + idx;
+            const f = s.f;
+            const encabezado =
+                th('Fecha', 'bg-amber-50') + th('Réplica #', 'bg-slate-200') + th('Analista', 'bg-slate-200') + th('Conc. Muestra') +
+                (f.adic ? th('Conc. Adicionado') : '') +
+                (f.dup ? th('Conc. Duplicado') : '') +
+                (f.recAdic ? th('% Rec. Adicionado', 'bg-blue-50') : '') +
+                (f.recDup ? th('% Rec. Duplicado', 'bg-indigo-50') : '') +
+                (f.rpd ? th('RPD (%)', 'bg-amber-50') : '');
+            const filasHtml = s.filas.map(r => `
                         <tr class="hover:bg-slate-50 transition-colors">
                             <td class="border border-slate-300 p-1 font-mono text-[10px] bg-amber-50/50">${window.fechaFilaMuestra(r)}</td>
                             <td class="border border-slate-300 p-1 font-semibold text-slate-700">${r.replica ?? '-'}</td>
                             <td class="border border-slate-300 p-1">${r.analista || 'N/A'}</td>
-                            <td class="border border-slate-300 p-1 font-mono">${r.normal !== undefined ? Number(r.normal).toFixed(3) : '-'}</td>
-                            <td class="border border-slate-300 p-1 font-mono">${r.adicionada != null ? Number(r.adicionada).toFixed(3) : '-'}</td>
-                            <td class="border border-slate-300 p-1 font-mono">${r.duplicada != null ? Number(r.duplicada).toFixed(3) : '-'}</td>
-                            <td class="border border-slate-300 p-1 font-mono font-bold text-blue-700 bg-blue-50/50">${r.recuperacion_adic != null ? Number(r.recuperacion_adic).toFixed(2) + '%' : '-'}</td>
-                            <td class="border border-slate-300 p-1 font-mono font-bold text-indigo-700 bg-indigo-50/50">${r.recuperacion_dup != null ? Number(r.recuperacion_dup).toFixed(2) + '%' : '-'}</td>
-                            <td class="border border-slate-300 p-1 font-mono font-bold text-amber-700 bg-amber-50/50">${r.rpd != null ? Number(r.rpd).toFixed(2) + '%' : '-'}</td>
-                        </tr>
-                    `).join('');
-                }
-            }
+                            <td class="border border-slate-300 p-1 font-mono">${num(r.normal, 3)}</td>
+                            ${f.adic ? `<td class="border border-slate-300 p-1 font-mono">${num(r.adicionada, 3)}</td>` : ''}
+                            ${f.dup ? `<td class="border border-slate-300 p-1 font-mono">${num(r.duplicada, 3)}</td>` : ''}
+                            ${f.recAdic ? `<td class="border border-slate-300 p-1 font-mono font-bold text-blue-700 bg-blue-50/50">${num(r.recuperacion_adic, 2, '%')}</td>` : ''}
+                            ${f.recDup ? `<td class="border border-slate-300 p-1 font-mono font-bold text-indigo-700 bg-indigo-50/50">${num(r.recuperacion_dup, 2, '%')}</td>` : ''}
+                            ${f.rpd ? `<td class="border border-slate-300 p-1 font-mono font-bold text-amber-700 bg-amber-50/50">${num(r.rpd, 2, '%')}</td>` : ''}
+                        </tr>`).join('');
 
-            // 2. Creación del gráfico de doble eje Y (Barras para %Rec y Línea para RPD)
-            const ctxMues = document.getElementById(`chart-inf-mues-${idx}`)?.getContext('2d');
-            if (ctxMues && filas.length > 0) {
-                const labels = filas.map(r => `Rép. ${r.replica}`);
-                const chart = new Chart(ctxMues, {
-                    type: 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [
-                            {
-                                label: '% Rec. Adición',
-                                data: filas.map(r => r.recuperacion_adic),
-                                backgroundColor: 'rgba(59, 130, 246, 0.75)',
-                                borderColor: 'rgba(37, 99, 235, 1)',
-                                borderWidth: 1,
-                                yAxisID: 'y'
-                            },
-                            {
-                                label: '% Rec. Duplicado',
-                                data: filas.map(r => r.recuperacion_dup),
-                                backgroundColor: 'rgba(99, 102, 241, 0.75)',
-                                borderColor: 'rgba(79, 70, 229, 1)',
-                                borderWidth: 1,
-                                yAxisID: 'y'
-                            },
-                            {
-                                label: 'RPD (%)',
-                                data: filas.map(r => r.rpd),
-                                type: 'line',
-                                borderColor: 'rgba(217, 119, 6, 1)',
-                                backgroundColor: 'rgba(217, 119, 6, 0.2)',
-                                borderWidth: 2,
-                                pointRadius: 4,
-                                pointBackgroundColor: 'rgba(217, 119, 6, 1)',
-                                yAxisID: 'y1'
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        animation: false,
-                        interaction: { mode: 'index', intersect: false },
-                        scales: {
-                            y: {
-                                type: 'linear',
-                                display: true,
-                                position: 'left',
-                                suggestedMin: 70,
-                                suggestedMax: 130,
-                                title: { display: true, text: '% Recuperación', font: { size: 9, weight: 'bold' } },
-                                ticks: { font: { size: 9 }, color: '#64748b' },
-                                grid: { color: '#eef2f7' }
-                            },
-                            y1: {
-                                type: 'linear',
-                                display: true,
-                                position: 'right',
-                                suggestedMin: 0,
-                                suggestedMax: 20,
-                                title: { display: true, text: 'RPD (%)', font: { size: 9, weight: 'bold' } },
-                                grid: { drawOnChartArea: false },
-                                ticks: { font: { size: 9 }, color: '#d97706' }
-                            },
-                            x: {
-                                grid: { display: false },
-                                ticks: { font: { size: 9 }, color: '#64748b' }
-                            }
-                        },
-                        plugins: {
-                            legend: { position: 'top', labels: { font: { size: 10, weight: '600' }, color: '#475569' } },
-                            tooltip: { backgroundColor: '#1e293b', padding: 8, cornerRadius: 6 }
-                        }
+            htmlDinamico += `
+                    <div id="subsec-${numSeccion.replace(/\./g, '-')}" class="space-y-2 mt-6 mantener-junto">
+                        <h4 class="text-xs font-bold text-blue-800 uppercase border-b border-blue-100 pb-1">
+                            ${numSeccion} Resultados de Muestras Ambientales - ${s.sub}
+                        </h4>
+                        <div class="bg-white p-3 rounded shadow-sm border border-slate-300">
+                            <h5 class="text-xs font-bold text-slate-700 mb-2">Tabla ${numTabla}. Datos de Concentración, Recuperación y RPD (${s.sub})</h5>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-xs text-center border-collapse border border-slate-300">
+                                    <thead><tr class="bg-slate-100 font-bold text-slate-700 border-b border-slate-300">${encabezado}</tr></thead>
+                                    <tbody class="divide-y divide-slate-300">${filasHtml}</tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+            `;
+        });
+
+        // Inyectar HTML generado en el DOM
+        contenedorMuestras.innerHTML = htmlDinamico;
+
+        // La subsección 6.3 completa se oculta si no hay ni controles ni muestras con datos
+        mostrarSi('subsec-6-3', dispControles.length > 0 || subsConDatos.length > 0);
+
+        // Gráficos (solo series con valores)
+        subsGraficables.forEach((s) => {
+            const ctxMues = document.getElementById(`chart-inf-mues-${s.idxGraf}`)?.getContext('2d');
+            if (!ctxMues) return;
+            const f = s.f, filas = s.filas;
+            const datasets = [];
+            if (f.recAdic) datasets.push({ label: '% Rec. Adición', data: filas.map(r => r.recuperacion_adic), backgroundColor: 'rgba(59, 130, 246, 0.75)', borderColor: 'rgba(37, 99, 235, 1)', borderWidth: 1, yAxisID: 'y' });
+            if (f.recDup) datasets.push({ label: '% Rec. Duplicado', data: filas.map(r => r.recuperacion_dup), backgroundColor: 'rgba(99, 102, 241, 0.75)', borderColor: 'rgba(79, 70, 229, 1)', borderWidth: 1, yAxisID: 'y' });
+            if (f.rpd) datasets.push({ label: 'RPD (%)', data: filas.map(r => r.rpd), type: 'line', borderColor: 'rgba(217, 119, 6, 1)', backgroundColor: 'rgba(217, 119, 6, 0.2)', borderWidth: 2, pointRadius: 4, pointBackgroundColor: 'rgba(217, 119, 6, 1)', yAxisID: 'y1' });
+            const scales = {
+                x: { grid: { display: false }, ticks: { font: { size: 9 }, color: '#64748b' } }
+            };
+            if (f.recAdic || f.recDup) scales.y = { type: 'linear', display: true, position: 'left', suggestedMin: 70, suggestedMax: 130, title: { display: true, text: '% Recuperación', font: { size: 9, weight: 'bold' } }, ticks: { font: { size: 9 }, color: '#64748b' }, grid: { color: '#eef2f7' } };
+            if (f.rpd) scales.y1 = { type: 'linear', display: true, position: f.recAdic || f.recDup ? 'right' : 'left', suggestedMin: 0, suggestedMax: 20, title: { display: true, text: 'RPD (%)', font: { size: 9, weight: 'bold' } }, grid: { drawOnChartArea: false }, ticks: { font: { size: 9 }, color: '#d97706' } };
+            const chart = new Chart(ctxMues, {
+                type: 'bar',
+                data: { labels: filas.map(r => `Rép. ${r.replica}`), datasets },
+                options: {
+                    responsive: true, maintainAspectRatio: false, animation: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales,
+                    plugins: {
+                        legend: { position: 'top', labels: { font: { size: 10, weight: '600' }, color: '#475569' } },
+                        tooltip: { backgroundColor: '#1e293b', padding: 8, cornerRadius: 6 }
                     }
-                });
-                window.chartsSubmatrices.push(chart);
-            }
+                }
+            });
+            window.chartsSubmatrices.push(chart);
         });
     }
 

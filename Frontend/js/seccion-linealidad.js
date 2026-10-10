@@ -35,11 +35,18 @@ window.poblarSelectorLinealidad = function () {
             select.appendChild(opt);
         }
     });
+
+    // Ningún parámetro con linealidad: no dejar tablas ni gráficas vacías
+    if (!foundFirst) {
+        window.parametroActivoLin = '';
+        const cont = document.getElementById('contenidoLinealidad');
+        if (cont) cont.classList.add('hidden');
+    }
 };
 
 window.renderizarDatosLinealidad = function (parametro) {
     // Validar que exista la linealidad en el objeto global para este parámetro
-    if (!parametro || !window.datosGlobales[parametro] || !window.datosGlobales[parametro].linealidad) {
+    if (!parametro || !window.datosGlobales[parametro] || !(window.tieneLinealidad ? window.tieneLinealidad(parametro) : window.datosGlobales[parametro].linealidad)) {
         // Sin linealidad: no dejar visibles los datos del parámetro anterior
         const cont = document.getElementById('contenidoLinealidad');
         if (cont) cont.classList.add('hidden');
@@ -78,21 +85,28 @@ window.renderizarDatosLinealidad = function (parametro) {
     // === FIN LÓGICA RAS ===
 
     // Renderizar Estadísticas (Código normal)
-    const stats = data.stats;
-    document.getElementById('tablaStatsLinealidad').innerHTML = `
-        <tr><td class="py-2 font-semibold">Promedio de Pendientes</td><td class="py-2 font-mono text-right">${stats.promedio_pendientes}</td></tr>
-        <tr class="bg-slate-50"><td class="py-2 font-semibold">Desviación de Pendientes</td><td class="py-2 font-mono text-right">${stats.desviacion_pendientes}</td></tr>
-        <tr><td class="py-2 font-bold text-blue-700">Sensibilidad (m ± SD)</td><td class="py-2 font-mono text-right text-blue-700 font-bold bg-blue-50">${stats.sensibilidad}</td></tr>
-        <tr class="bg-slate-50"><td class="py-2 font-semibold">Intercepto (Promedio)</td><td class="py-2 font-mono text-right">${stats.intercepto}</td></tr>
-        <tr><td class="py-2 font-semibold">Coef. de Correlación (r)</td><td class="py-2 font-mono text-right">${stats.r}</td></tr>
-        <tr class="bg-slate-50"><td class="py-2 font-semibold">Coef. de Determinación (R²)</td><td class="py-2 font-mono text-right font-bold text-emerald-700">${stats.r2}</td></tr>
-        <tr><td class="py-2 font-semibold">Ecuación</td><td class="py-2 font-mono text-right italic">${stats.ecuacion}</td></tr>
-    `;
+    const stats = data.stats || {};
+    const tabla = Array.isArray(data.tabla) ? data.tabla : [];
+    const curvasRaw = Array.isArray(data.curvas_raw) ? data.curvas_raw : [];
+
+    // Solo se listan los estadísticos que existen
+    const filasStats = [
+        ['Promedio de Pendientes', stats.promedio_pendientes, 'font-semibold', 'font-mono text-right'],
+        ['Desviación de Pendientes', stats.desviacion_pendientes, 'font-semibold', 'font-mono text-right'],
+        ['Sensibilidad (m ± SD)', stats.sensibilidad, 'font-bold text-blue-700', 'font-mono text-right text-blue-700 font-bold bg-blue-50'],
+        ['Intercepto (Promedio)', stats.intercepto, 'font-semibold', 'font-mono text-right'],
+        ['Coef. de Correlación (r)', stats.r, 'font-semibold', 'font-mono text-right'],
+        ['Coef. de Determinación (R²)', stats.r2, 'font-semibold', 'font-mono text-right font-bold text-emerald-700'],
+        ['Ecuación', stats.ecuacion, 'font-semibold', 'font-mono text-right italic']
+    ].filter(f => f[1] !== undefined && f[1] !== null && f[1] !== '');
+    document.getElementById('tablaStatsLinealidad').innerHTML = filasStats.map((f, i) =>
+        `<tr class="${i % 2 === 1 ? 'bg-slate-50' : ''}"><td class="py-2 ${f[2]}">${f[0]}</td><td class="py-2 ${f[3]}">${f[1]}</td></tr>`
+    ).join('');
 
     // Averiguar máximo de curvas para dinámicamente crear cabeceras
     let maxCurvas = 0;
-    data.tabla.forEach(row => {
-        if (row.señales.length > maxCurvas) maxCurvas = row.señales.length;
+    tabla.forEach(row => {
+        if ((row.señales || []).length > maxCurvas) maxCurvas = row.señales.length;
     });
 
     // Construir Cabeceras de Tabla
@@ -109,12 +123,12 @@ window.renderizarDatosLinealidad = function (parametro) {
 
     // Construir Cuerpo de Tabla
     let tbodyHTML = '';
-    data.tabla.forEach((row, index) => {
+    tabla.forEach((row, index) => {
         let fila = `<tr class="${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-blue-50">
             <td class="border border-slate-300 p-2 font-bold text-slate-800">${row.concentracion}</td>`;
 
         for (let i = 0; i < maxCurvas; i++) {
-            const val = row.señales[i] !== undefined ? row.señales[i] : '-';
+            const val = (row.señales && row.señales[i] !== undefined) ? row.señales[i] : '-';
             fila += `<td class="border border-slate-300 p-2 font-mono text-slate-600">${val}</td>`;
         }
 
@@ -127,13 +141,23 @@ window.renderizarDatosLinealidad = function (parametro) {
     });
     document.getElementById('bodyTablaLinealidad').innerHTML = tbodyHTML;
 
+    // Columnas calculadas que el backend no envió desaparecen de la tabla
+    const hayConcCalc = tabla.some(r => r.conc_calculada !== undefined && r.conc_calculada !== null);
+    const hayError = tabla.some(r => r.error_pct !== undefined && r.error_pct !== null);
+    const ocultasLin = [];
+    if (!hayConcCalc) ocultasLin.push(maxCurvas + 2);
+    if (!hayError) ocultasLin.push(maxCurvas + 3);
+    window.ocultarColumnasTabla(document.getElementById('bodyTablaLinealidad').closest('table'), ocultasLin);
+
     // Destruir gráficos previos
     if (window.chartCurvasIndInstance) window.chartCurvasIndInstance.destroy();
     if (window.chartCurvaPromedioInstance) window.chartCurvaPromedioInstance.destroy();
 
-    // 1. Gráfico de Curvas Individuales
-    const ctxInd = document.getElementById('chartCurvasInd').getContext('2d');
-    const datasetsInd = data.curvas_raw.map((curva, i) => {
+    // 1. Gráfico de Curvas Individuales (si no hay curvas, la gráfica desaparece)
+    const canvasInd = document.getElementById('chartCurvasInd');
+    window.mostrarSiElemento(window.tarjetaDe(canvasInd), curvasRaw.length > 0);
+    const ctxInd = canvasInd.getContext('2d');
+    const datasetsInd = curvasRaw.map((curva, i) => {
         const color = `hsl(${i * 60 + 200}, 70%, 50%)`;
         return {
             label: `Curva ${i + 1}`,
@@ -159,11 +183,13 @@ window.renderizarDatosLinealidad = function (parametro) {
     });
 
     // 2. Gráfico Curva Promedio
-    const ctxAvg = document.getElementById('chartCurvaPromedio').getContext('2d');
-    const puntosPromedio = data.tabla.map(row => ({ x: row.concentracion, y: row.promedio }));
+    const canvasAvg = document.getElementById('chartCurvaPromedio');
+    window.mostrarSiElemento(window.tarjetaDe(canvasAvg), tabla.length > 0);
+    const ctxAvg = canvasAvg.getContext('2d');
+    const puntosPromedio = tabla.map(row => ({ x: row.concentracion, y: row.promedio }));
 
     // Crear línea de tendencia teórica visual
-    const xVals = data.tabla.map(r => r.concentracion);
+    const xVals = tabla.map(r => r.concentracion);
     const minX = Math.min(...xVals);
     const maxX = Math.max(...xVals);
     const lineaTendencia = [

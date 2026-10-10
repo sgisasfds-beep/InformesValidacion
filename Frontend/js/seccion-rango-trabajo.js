@@ -16,6 +16,11 @@ window.factoresDilucionRT = window.factoresDilucionRT || {};
 /* CÁLCULO COMPARTIDO (vista RT + informe)                                    */
 /* ========================================================================== */
 
+window.tieneRT = function (elem) {
+    const d = (window.datosGlobales || {})[elem];
+    return !!(d && d.rt && Array.isArray(d.rt.raw) && d.rt.raw.length > 0);
+};
+
 window.calcularStatsRT = function (arr, teorico) {
     if (!arr || arr.length === 0) return { prom: 0, std: 0, errProm: 0, recProm: 0, count: 0 };
     const vals = arr.map(d => d.concFinal);
@@ -122,15 +127,32 @@ window.renderizarRangoTrabajo = function (elementoSeleccionado) {
     const datosGlobales = window.datosGlobales || {};
     const selectElem = document.getElementById('selectElementoRT');
     const contenedorRT = document.getElementById('contenidoRT');
+    if (!contenedorRT) return;
 
-    if (!datosGlobales || Object.keys(datosGlobales).length === 0) {
-        if (contenedorRT) contenedorRT.classList.add('hidden');
+    // El aviso va FUERA de contenidoRT: antes se reemplazaba su innerHTML y la tabla se perdía para siempre
+    let aviso = document.getElementById('rt-sin-datos');
+    const mostrarAviso = (texto) => {
+        if (!aviso) {
+            aviso = document.createElement('div');
+            aviso.id = 'rt-sin-datos';
+            aviso.className = 'p-8 text-center text-slate-500 font-semibold';
+            contenedorRT.parentNode.insertBefore(aviso, contenedorRT);
+        }
+        aviso.textContent = texto;
+        aviso.style.display = '';
+        contenedorRT.classList.add('hidden');
+    };
+
+    const conRT = Object.keys(datosGlobales).filter(e => window.tieneRT(e));
+    if (conRT.length === 0) {
+        mostrarAviso('No hay lecturas registradas para el control de Rango de Trabajo.');
         return;
     }
 
-    // Poblar el selector de elementos si está vacío
-    if (selectElem && selectElem.options.length === 0) {
-        Object.keys(datosGlobales).forEach(elem => {
+    // El selector solo ofrece elementos que tienen RT
+    if (selectElem && Array.from(selectElem.options).map(o => o.value).join('|') !== conRT.join('|')) {
+        selectElem.innerHTML = '';
+        conRT.forEach(elem => {
             const opt = document.createElement('option');
             opt.value = elem;
             opt.textContent = elem;
@@ -138,24 +160,20 @@ window.renderizarRangoTrabajo = function (elementoSeleccionado) {
         });
     }
 
-    const elem = elementoSeleccionado || (selectElem ? selectElem.value : Object.keys(datosGlobales)[0]);
-    if (selectElem) selectElem.value = elem;
+    const elem = elementoSeleccionado || (selectElem ? selectElem.value : conRT[0]);
+    if (selectElem && conRT.includes(elem)) selectElem.value = elem;
 
-    const dataElem = datosGlobales[elem];
-    if (!dataElem || !dataElem.rt || !dataElem.rt.raw || dataElem.rt.raw.length === 0) {
-        if (contenedorRT) contenedorRT.innerHTML = `<div class="p-8 text-center text-slate-500 font-semibold">No hay lecturas registradas para el control RT en ${elem}.</div>`;
+    if (!window.tieneRT(elem)) {
+        mostrarAviso(`No hay lecturas registradas para el control RT en ${elem}.`);
         return;
     }
 
+    if (aviso) aviso.style.display = 'none';
     contenedorRT.classList.remove('hidden');
-
-    if (!window.factoresDilucionRT[elem]) {
-        window.factoresDilucionRT[elem] = dataElem.rt.raw.map(item => parseFloat(item.factor) || 1.0);
-    }
 
     // Inicializar o recuperar factores de dilución guardados
     if (!window.factoresDilucionRT[elem]) {
-        window.factoresDilucionRT[elem] = dataElem.rt.raw.map(() => 1.0);
+        window.factoresDilucionRT[elem] = datosGlobales[elem].rt.raw.map(item => parseFloat(item.factor) || 1.0);
     }
 
     window.actualizarTablaYEstadisticasRT(elem, elem);

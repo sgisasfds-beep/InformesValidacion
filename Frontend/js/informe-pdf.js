@@ -26,8 +26,16 @@ window.renderizarGraficas = function (dataElem) {
     const lcm2 = dataElem.lcm?.analista_2?.valores || dataElem.analista_2?.valores || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     const labelsEnsayos = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
 
+    const hayLcmPdf = !!(dataElem.lcm?.analista_1?.valores?.length || dataElem.lcm?.analista_2?.valores?.length ||
+        dataElem.analista_1?.valores?.length || dataElem.analista_2?.valores?.length);
     const ctxPrecision = document.getElementById('chart-precision');
-    if (ctxPrecision) {
+    const cardPrecision = ctxPrecision && (ctxPrecision.closest('.mantener-junto') || ctxPrecision.parentElement);
+    if (ctxPrecision && !hayLcmPdf) {
+        // Sin LCM no se dibuja una gráfica de ceros
+        if (instanciaChartPrecision) { instanciaChartPrecision.destroy(); instanciaChartPrecision = null; }
+        if (cardPrecision) cardPrecision.style.display = 'none';
+    } else if (ctxPrecision) {
+        if (cardPrecision) cardPrecision.style.display = '';
         if (instanciaChartPrecision) instanciaChartPrecision.destroy();
 
         const paletaPrecision = window.PALETA_ANALISTAS;

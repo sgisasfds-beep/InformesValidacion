@@ -18,6 +18,11 @@ window.renderizarLimites = function () {
     document.getElementById('stat-loq').innerText = data.loq_posible;
     document.getElementById('stat-teorico').innerText = data.teorico_lcm;
     const hayLCM = window.tieneDatosControl ? window.tieneDatosControl(window.elementoActivo, 'lcm') : !!data.lcm;
+    // Sin LCM: desaparecen las tarjetas que dependen de él
+    ['stat-teorico', 'stat-error'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.parentElement) el.parentElement.style.display = hayLCM ? '' : 'none';
+    });
     document.getElementById('stat-error').innerText = (hayLCM && data.lcm?.global?.error_pct !== undefined) ? data.lcm.global.error_pct + '%' : '--';
 
     // Fisicoquímico: un único blanco (Analista 1). El backend lo indica con mb.solo_analista_1.
@@ -74,7 +79,8 @@ window.renderizarLimitesFisicoquimico = function (data, soloMBA1) {
         const valsLCMA1 = lcmD.analista_1?.valores || [];  // (vacío si no hay LCM)
         const valsLCMA2 = lcmD.analista_2?.valores || [];
 
-        for (let i = 0; i < 10; i++) {
+        const nFilas = Math.max(valsMBA1.length, valsMBA2.length, valsLCMA1.length, valsLCMA2.length);
+        for (let i = 0; i < nFilas; i++) {
             const vMB1 = valsMBA1[i] !== undefined ? valsMBA1[i] : '-';
             const vMB2 = valsMBA2[i] !== undefined ? valsMBA2[i] : '-';
             const vLCM1 = valsLCMA1[i] !== undefined ? valsLCMA1[i] : '-';
@@ -91,6 +97,13 @@ window.renderizarLimitesFisicoquimico = function (data, soloMBA1) {
             `;
         }
         tbBrutos.innerHTML = filasHTML;
+
+        // Columnas de LCM (por analista) sin valores desaparecen de la tabla de datos brutos
+        const baseLCM = 1 + (soloMBA1 ? 1 : 2);
+        const ocultasL = [];
+        if (!hayLCM || valsLCMA1.length === 0) ocultasL.push(baseLCM);
+        if (!hayLCM || valsLCMA2.length === 0) ocultasL.push(baseLCM + 1);
+        window.ocultarColumnasTabla(tbBrutos.closest('table'), ocultasL);
     }
 
     if (window.chartMBInstance) window.chartMBInstance.destroy();

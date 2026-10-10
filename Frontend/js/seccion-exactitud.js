@@ -82,6 +82,96 @@ window.aplicarVisibilidadTabsControl = function (prefijo, elem, controlPedido) {
     return disp[0] || null;
 };
 
+
+// ----------------------------------------------------------------------
+// UTILIDADES DE VISIBILIDAD (ocultar lo que no tiene datos)
+// ----------------------------------------------------------------------
+
+// Tarjeta contenedora de un canvas/tabla: la marcada con .mantener-junto / data-tarjeta,
+// o el primer ancestro que tenga un título (h1-h6) como hijo directo.
+window.tarjetaDe = function (el) {
+    if (!el) return null;
+    const marcada = el.closest('.mantener-junto, [data-tarjeta]');
+    if (marcada) return marcada;
+    let n = el.parentElement;
+    while (n && n.parentElement) {
+        if (n.querySelector(':scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6')) return n;
+        n = n.parentElement;
+    }
+    return el.parentElement;
+};
+
+window.mostrarSiElemento = function (el, visible) {
+    if (el) el.style.display = visible ? '' : 'none';
+};
+
+/**
+ * Oculta columnas de una tabla por índice lógico (0 = primera), respetando
+ * colspan/rowspan en el thead. Cada llamada restaura primero lo que ocultó la
+ * llamada anterior, así que se puede invocar en cada renderizado.
+ * Las celdas que otra lógica ya ocultó con display:none no cuentan como columna.
+ */
+window.ocultarColumnasTabla = function (tabla, ocultas) {
+    if (!tabla) return;
+    tabla.querySelectorAll('th, td').forEach(c => {
+        if (c.dataset.ocCol === '1') { c.style.display = ''; delete c.dataset.ocCol; }
+        if (c.dataset.ocSpan) { c.colSpan = parseInt(c.dataset.ocSpan, 10); delete c.dataset.ocSpan; }
+    });
+    if (!ocultas || ocultas.length === 0) return;
+    const set = new Set(ocultas);
+    const ocupado = [];
+    Array.from(tabla.rows).forEach((tr, r) => {
+        ocupado[r] = ocupado[r] || new Set();
+        let col = 0;
+        Array.from(tr.cells).forEach(cell => {
+            if (cell.style.display === 'none') return;
+            while (ocupado[r].has(col)) col++;
+            const cs = cell.colSpan || 1, rs = cell.rowSpan || 1;
+            let nOcultas = 0;
+            for (let dc = 0; dc < cs; dc++) if (set.has(col + dc)) nOcultas++;
+            for (let dr = 0; dr < rs; dr++) {
+                ocupado[r + dr] = ocupado[r + dr] || new Set();
+                for (let dc = 0; dc < cs; dc++) ocupado[r + dr].add(col + dc);
+            }
+            if (nOcultas === cs) { cell.dataset.ocCol = '1'; cell.style.display = 'none'; }
+            else if (nOcultas > 0) { cell.dataset.ocSpan = String(cs); cell.colSpan = cs - nOcultas; }
+            col += cs;
+        });
+    });
+};
+
+// ¿Qué analistas tienen lecturas en una lista raw?
+window.analistasConDatos = function (raw) {
+    const arr = Array.isArray(raw) ? raw : [];
+    return { a1: arr.some(d => d.analista === 'Analista 1'), a2: arr.some(d => d.analista === 'Analista 2') };
+};
+
+// Quita de un gráfico Chart.js los datasets sin ningún valor (excepto los de referencia)
+window.quitarDatasetsVacios = function (chart, etiquetasReferencia = []) {
+    if (!chart) return 0;
+    chart.data.datasets = chart.data.datasets.filter(ds =>
+        etiquetasReferencia.some(e => String(ds.label || '').startsWith(e)) ||
+        (Array.isArray(ds.data) && ds.data.some(v => v !== null && v !== undefined && v !== '')));
+    chart.update('none');
+    return chart.data.datasets.length;
+};
+
+// Matrices de muestras con registros para un elemento (solo las del tipo de análisis actual)
+window.matricesMuestrasConDatos = function (elem) {
+    const data = window.datosGlobales && window.datosGlobales[elem];
+    if (!data) return [];
+    const m = data.muestras || data.exactitud_muestras || (data.exactitud && data.exactitud.muestras) || {};
+    const permitidas = window.obtenerMatricesPermitidas ? window.obtenerMatricesPermitidas() : null;
+    return Object.keys(m).filter(k => Array.isArray(m[k]) && m[k].length > 0 && (!permitidas || permitidas.includes(k)));
+};
+
+// Qué columnas de la tabla de muestras tienen al menos un valor
+window.flagsMuestras = function (regs) {
+    const lista = Array.isArray(regs) ? regs : [];
+    const tiene = k => lista.some(r => r[k] !== null && r[k] !== undefined && r[k] !== '');
+    return { adic: tiene('adicionada'), dup: tiene('duplicada'), recAdic: tiene('recuperacion_adic'), recDup: tiene('recuperacion_dup'), rpd: tiene('rpd') };
+};
+
 window.chartMuestrasInstancia = null;
 window.matrizActivaMuestra = null;
 window.MATRICES_SUELO = window.MATRICES_SUELO || ['arenoso', 'arcilloso', 'limoso'];
@@ -114,8 +204,12 @@ window.obtenerMatricesPermitidas = function () {
  */
 window.actualizarTabsMatriz = function () {
     const tipoTab = window.tipoAnalisisActual === 'suelos' ? 'suelos' : 'estandar';
+    const conDatos = window.matricesMuestrasConDatos(window.elementoActivo);
     document.querySelectorAll('.tab-matriz').forEach(tab => {
-        tab.style.display = (tab.getAttribute('data-matriz-tipo') === tipoTab) ? '' : 'none';
+        const aplica = tab.getAttribute('data-matriz-tipo') === tipoTab;
+        const key = (tab.id || '').replace('tab-matriz-', '').replace(/-/g, ' ');
+        const tieneDatos = tab.id ? conDatos.includes(key) : true;
+        tab.style.display = (aplica && tieneDatos) ? '' : 'none';
     });
 };
 
@@ -185,7 +279,7 @@ window.renderizarMuestrasAdicionadas = function (matrizKey) {
 
     // Matriz a mostrar: la pedida/activa si es válida; si no, la primera con datos; si no, la primera permitida
     let matrizSeleccionada = matrizKey || window.matrizActivaMuestra;
-    if (!permitidas.includes(matrizSeleccionada)) {
+    if (!permitidas.includes(matrizSeleccionada) || !matricesConDatos.includes(matrizSeleccionada)) {
         matrizSeleccionada = matricesConDatos[0] || permitidas[0];
     }
     window.matrizActivaMuestra = matrizSeleccionada;
@@ -255,6 +349,16 @@ window.renderizarMuestrasAdicionadas = function (matrizKey) {
 
     tablaMuestras.innerHTML = filasHTML;
 
+    // Columnas sin ningún valor (adicionado, duplicado, RPD...) desaparecen de la tabla
+    const fl = window.flagsMuestras(registrosMatriz);
+    const ocultasM = [];
+    if (!fl.adic) ocultasM.push(3);
+    if (!fl.dup) ocultasM.push(4);
+    if (!fl.recAdic) ocultasM.push(5);
+    if (!registrosMatriz.some(m => m.duplicado_de !== 'normal' && m.recuperacion_dup !== null && m.recuperacion_dup !== undefined)) ocultasM.push(6);
+    if (!fl.rpd) ocultasM.push(7);
+    window.ocultarColumnasTabla(tablaMuestras.closest('table'), ocultasM);
+
     // 5. Dibujar el gráfico comparativo de la matriz seleccionada
     window.dibujarGraficoMuestrasMatriz(registrosMatriz);
 };
@@ -273,7 +377,9 @@ window.dibujarGraficoMuestrasMatriz = function (registros) {
         window.chartMuestrasInstancia = null;
     }
 
-    if (!registros || registros.length === 0) return;
+    const tarjetaMu = window.tarjetaDe(canvas);
+    if (!registros || registros.length === 0) { window.mostrarSiElemento(tarjetaMu, false); return; }
+    window.mostrarSiElemento(tarjetaMu, true);
 
     const paleta = window.PALETA_ANALISTAS;
     const regsA1 = registros.filter(r => r.analista === 'Analista 1');
@@ -354,6 +460,14 @@ window.dibujarGraficoMuestrasMatriz = function (registros) {
             }
         }
     });
+
+    // Series sin valores (p. ej. sin adicionado o sin RPD) no se dibujan; sin series, no hay gráfica
+    const nSeries = window.quitarDatasetsVacios(window.chartMuestrasInstancia);
+    if (!window.chartMuestrasInstancia.data.datasets.some(ds => ds.yAxisID === 'y1')) {
+        window.chartMuestrasInstancia.options.scales.y1.display = false;
+        window.chartMuestrasInstancia.update('none');
+    }
+    window.mostrarSiElemento(tarjetaMu, nSeries > 0);
 };
 /**
  * Calcula métricas individuales por replicado, promedios y test de Grubbs por grupo.
@@ -560,7 +674,7 @@ window.renderizarExactitud = function (control) {
     // Ocultar pestañas LCM/CCV/EA sin datos y redirigir al primer control disponible
     const controlValido = window.aplicarVisibilidadTabsControl('exa', window.elementoActivo, control);
     const btnMuestras = document.getElementById('tab-exa-MUESTRAS');
-    const hayMuestras = window.tieneMuestras(window.elementoActivo);
+    const hayMuestras = window.matricesMuestrasConDatos(window.elementoActivo).length > 0;
     if (btnMuestras) btnMuestras.style.display = hayMuestras ? '' : 'none';
     if (!controlValido) {
         // Sin controles: mostrar muestras si existen; si no, no hay nada que pintar
@@ -612,7 +726,7 @@ window.renderizarExactitud = function (control) {
     // 1. Renderizar la Tabla Detallada de los 10 Replicados Individuales
     const tbIndividual = document.getElementById('tablaExactitudIndividual');
     const tbPromedio = document.getElementById('tablaExactitudIndividualPromedio');
-    const totalReplicas = Math.max(statsA1.itemMetrics.length, statsA2.itemMetrics.length, 10);
+    const totalReplicas = Math.max(statsA1.itemMetrics.length, statsA2.itemMetrics.length);
 
     let filasHTML = '';
     for (let i = 0; i < totalReplicas; i++) {
@@ -656,6 +770,20 @@ window.renderizarExactitud = function (control) {
 
     // 2. Renderizar Gráfico
     window.dibujarGraficoRecuperacion(statsA1.itemMetrics, statsA2.itemMetrics);
+    window.quitarDatasetsVacios(window.chartExactitudInstancia, ['100%']);
+
+    // Analista sin lecturas: su columna desaparece de las tablas
+    const apExa = window.analistasConDatos(datosBase);
+    const ocIndiv = [];
+    if (!apExa.a1) ocIndiv.push(1, 2, 3);
+    if (!apExa.a2) ocIndiv.push(4, 5, 6);
+    const tablaIndiv = tbIndividual.closest('table');
+    window.ocultarColumnasTabla(tablaIndiv, ocIndiv);
+    const tablaProm = tbPromedio.closest('table');
+    if (tablaProm && tablaProm !== tablaIndiv) window.ocultarColumnasTabla(tablaProm, ocIndiv);
+    const ocRes = [];
+    if (!apExa.a1) ocRes.push(1);
+    if (!apExa.a2) ocRes.push(2);
 
     // 3. Renderizar Tabla Test de Grubbs
     document.getElementById('tablaGrubbsStats').innerHTML = `
@@ -736,6 +864,9 @@ window.renderizarExactitud = function (control) {
             <td class="border border-slate-300 p-2 font-mono text-right font-bold text-blue-800 bg-emerald-50/30">${statsGlobal.recuperacion}%</td>
         </tr>
     `;
+
+    window.ocultarColumnasTabla(document.getElementById('tablaGrubbsStats').closest('table'), ocRes);
+    window.ocultarColumnasTabla(document.getElementById('tablaExactitudStats').closest('table'), ocRes);
 
     // 5. Renderizar Tabla de Datos Atípicos
     const todosOutliers = [...(statsA1.outliers || []), ...(statsA2.outliers || [])];

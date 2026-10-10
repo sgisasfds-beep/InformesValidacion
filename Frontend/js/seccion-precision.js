@@ -24,7 +24,17 @@ window.crearGradienteVertical = window.crearGradienteVertical || function (chart
 };
 
 window.renderizarPrecision = function (control) {
-    if (!window.elementoActivo || !window.datosGlobales[window.elementoActivo] || !window.datosGlobales[window.elementoActivo].precision) return;
+    if (!window.elementoActivo || !window.datosGlobales[window.elementoActivo]) return;
+    if (!window.datosGlobales[window.elementoActivo].precision) {
+        // Sin precisión para este elemento: no dejar pestañas ni tablas del elemento anterior
+        (window.CONTROLES_CALIDAD || []).forEach(c => {
+            const b = document.getElementById(`tab-prec-${c}`);
+            if (b) b.style.display = 'none';
+        });
+        const cp = document.getElementById('contenidoPrecision');
+        if (cp) cp.classList.add('hidden');
+        return;
+    }
     // Ocultar pestañas LCM/CCV/EA sin datos y redirigir al primer control disponible
     const controlValido = window.aplicarVisibilidadTabsControl
         ? window.aplicarVisibilidadTabsControl('prec', window.elementoActivo, control)
@@ -48,24 +58,37 @@ window.renderizarPrecision = function (control) {
     document.getElementById('contenidoPrecision').classList.remove('hidden');
     const fmtYesNo = (normal) => normal ? `<span class="font-bold text-emerald-700">yes</span>` : `<span class="font-bold text-red-600">no</span>`;
 
-    document.getElementById('tablaNormalidad').innerHTML = `
-        <tr class="bg-white"><td colspan="3" class="p-2 text-left text-slate-800">Shapiro-Wilk Test</td></tr>
-        <tr class="hover:bg-slate-50 border-t border-slate-300"><td class="border border-slate-300 p-2 text-left">W-stat</td><td class="border border-slate-300 p-2 font-mono">${dataPrec.normalidad.shapiro.analista_1.stat}</td><td class="border border-slate-300 p-2 font-mono">${dataPrec.normalidad.shapiro.analista_2.stat}</td></tr>
-        <tr class="hover:bg-slate-50"><td class="border border-slate-300 p-2 text-left">p-value</td><td class="border border-slate-300 p-2 font-mono">${dataPrec.normalidad.shapiro.analista_1.p}</td><td class="border border-slate-300 p-2 font-mono">${dataPrec.normalidad.shapiro.analista_2.p}</td></tr>
+    // Analistas con lecturas: el que no tenga datos pierde su columna (y sus pruebas)
+    const rawPrec = (window.datosGlobales[window.elementoActivo][control] || {}).raw || [];
+    const apPrec = window.analistasConDatos(rawPrec);
+    const norm = dataPrec.normalidad || {};
+    const celdaT = (t, k) => `<td class="border border-slate-300 p-2 font-mono">${(t[k] === undefined || t[k] === null) ? '--' : t[k]}</td>`;
+    const celdaN = (t) => `<td class="border border-slate-300 p-2">${t.normal === undefined || t.normal === null ? '--' : fmtYesNo(t.normal)}</td>`;
+    const bloqueTest = (titulo, test, claveStat, etqStat, claseTitulo) => {
+        if (!test) return '';
+        const t1 = test.analista_1 || {}, t2 = test.analista_2 || {};
+        return `
+        <tr class="bg-white"><td colspan="3" class="${claseTitulo}">${titulo}</td></tr>
+        <tr class="hover:bg-slate-50 border-t border-slate-300"><td class="border border-slate-300 p-2 text-left">${etqStat}</td>${celdaT(t1, claveStat)}${celdaT(t2, claveStat)}</tr>
+        <tr class="hover:bg-slate-50"><td class="border border-slate-300 p-2 text-left">p-value</td>${celdaT(t1, 'p')}${celdaT(t2, 'p')}</tr>
         <tr class="hover:bg-slate-50"><td class="border border-slate-300 p-2 text-left">alpha</td><td class="border border-slate-300 p-2 font-mono">0.05</td><td class="border border-slate-300 p-2 font-mono">0.05</td></tr>
-        <tr class="hover:bg-slate-50"><td class="border border-slate-300 p-2 text-left">normal</td><td class="border border-slate-300 p-2">${fmtYesNo(dataPrec.normalidad.shapiro.analista_1.normal)}</td><td class="border border-slate-300 p-2">${fmtYesNo(dataPrec.normalidad.shapiro.analista_2.normal)}</td></tr>
-        <tr class="bg-white"><td colspan="3" class="p-2 pt-6 text-left text-slate-800 border-t-2 border-slate-300">d'Agostino-Pearson</td></tr>
-        <tr class="hover:bg-slate-50 border-t border-slate-300"><td class="border border-slate-300 p-2 text-left">DA-stat</td><td class="border border-slate-300 p-2 font-mono">${dataPrec.normalidad.dagostino.analista_1.stat}</td><td class="border border-slate-300 p-2 font-mono">${dataPrec.normalidad.dagostino.analista_2.stat}</td></tr>
-        <tr class="hover:bg-slate-50"><td class="border border-slate-300 p-2 text-left">p-value</td><td class="border border-slate-300 p-2 font-mono">${dataPrec.normalidad.dagostino.analista_1.p}</td><td class="border border-slate-300 p-2 font-mono">${dataPrec.normalidad.dagostino.analista_2.p}</td></tr>
-        <tr class="hover:bg-slate-50"><td class="border border-slate-300 p-2 text-left">alpha</td><td class="border border-slate-300 p-2 font-mono">0.05</td><td class="border border-slate-300 p-2 font-mono">0.05</td></tr>
-        <tr class="hover:bg-slate-50"><td class="border border-slate-300 p-2 text-left">normal</td><td class="border border-slate-300 p-2">${fmtYesNo(dataPrec.normalidad.dagostino.analista_1.normal)}</td><td class="border border-slate-300 p-2">${fmtYesNo(dataPrec.normalidad.dagostino.analista_2.normal)}</td></tr>
-    `;
+        <tr class="hover:bg-slate-50"><td class="border border-slate-300 p-2 text-left">normal</td>${celdaN(t1)}${celdaN(t2)}</tr>`;
+    };
+    const tbNorm = document.getElementById('tablaNormalidad');
+    tbNorm.innerHTML =
+        bloqueTest('Shapiro-Wilk Test', norm.shapiro, 'stat', 'W-stat', 'p-2 text-left text-slate-800') +
+        bloqueTest("d'Agostino-Pearson", norm.dagostino, 'stat', 'DA-stat', 'p-2 pt-6 text-left text-slate-800 border-t-2 border-slate-300');
+    const ocNorm = [];
+    if (!apPrec.a1) ocNorm.push(1);
+    if (!apPrec.a2) ocNorm.push(2);
+    window.ocultarColumnasTabla(tbNorm.closest('table'), ocNorm);
 
     const cardKw = document.getElementById('cardNoParametrica');
-    const noNormalShapiro = !dataPrec.normalidad.shapiro.analista_1.normal || !dataPrec.normalidad.shapiro.analista_2.normal;
-    const noNormalDagostino = !dataPrec.normalidad.dagostino.analista_1.normal || !dataPrec.normalidad.dagostino.analista_2.normal;
+    const algunoNoNormal = (test) => ['analista_1', 'analista_2'].some(a => test && test[a] && test[a].normal === false);
+    const noNormalShapiro = algunoNoNormal(norm.shapiro);
+    const noNormalDagostino = algunoNoNormal(norm.dagostino);
 
-    if (noNormalShapiro || noNormalDagostino) {
+    if ((noNormalShapiro || noNormalDagostino) && dataPrec.no_parametrica) {
         if (cardKw) cardKw.classList.remove('hidden');
         const kw = dataPrec.no_parametrica;
         const alertKw = kw.significativa ? `<span class="text-red-600 font-bold">Diferencia significativa</span>` : `<span class="text-emerald-700 font-bold">Sin diferencia significativa</span>`;
@@ -79,7 +102,7 @@ window.renderizarPrecision = function (control) {
     }
 
     const tagSig = (p) => p < 0.05 ? `<span class="text-red-600 font-bold">${p} *</span>` : `<span class="text-emerald-700 font-bold">${p}</span>`;
-    if (Object.keys(dataPrec.anova).length > 0) {
+    if (dataPrec.anova && Object.keys(dataPrec.anova).length > 0 && dataPrec.anova.analista && dataPrec.anova.replica) {
         document.getElementById('tablaANOVA').innerHTML = `
             <tr class="hover:bg-slate-50"><td class="border border-slate-300 p-2 text-left font-semibold">Analista</td><td class="border border-slate-300 p-2 font-mono">${dataPrec.anova.analista.F}</td><td class="border border-slate-300 p-2 font-mono">${tagSig(dataPrec.anova.analista.p)}</td></tr>
             <tr class="hover:bg-slate-50"><td class="border border-slate-300 p-2 text-left font-semibold">Réplica</td><td class="border border-slate-300 p-2 font-mono">${dataPrec.anova.replica.F}</td><td class="border border-slate-300 p-2 font-mono">${tagSig(dataPrec.anova.replica.p)}</td></tr>
@@ -167,4 +190,6 @@ window.renderizarPrecision = function (control) {
             }
         }
     });
+    // Analista sin lecturas: no se dibuja su serie ni aparece en la leyenda
+    window.quitarDatasetsVacios(window.chartPrecisionInstance);
 };
